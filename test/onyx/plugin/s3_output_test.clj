@@ -69,7 +69,7 @@
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
-        (let [batch-size 2
+        (let [batch-size 5000
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
@@ -77,6 +77,7 @@
                                   :onyx/type :input
                                   :onyx/medium :core.async
                                   :onyx/batch-size batch-size
+                                  :onyx/max-pending 100000
                                   :onyx/max-peers 1
                                   :onyx/doc "Reads segments from a core.async channel"}
 
@@ -93,8 +94,10 @@
                       (add-task (task/s3-output :out
                                                 bucket
                                                 ::serializer-fn
-                                                {:onyx/max-peers 1})))
-              n-messages 100
+                                                {:onyx/max-peers 1
+                                                 :onyx/batch-timeout 2000
+                                                 :onyx/batch-size batch-size})))
+              n-messages 100000
               _ (reset! in-chan (chan (inc n-messages)))
               input-messages (map (fn [v] {:n v}) (range n-messages))]
           (run! #(>!! @in-chan %) input-messages)
