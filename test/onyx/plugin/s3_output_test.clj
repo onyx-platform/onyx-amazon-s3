@@ -70,7 +70,7 @@
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
-        (let [batch-size 5000
+        (let [batch-size 50
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
@@ -78,7 +78,6 @@
                                   :onyx/type :input
                                   :onyx/medium :core.async
                                   :onyx/batch-size batch-size
-                                  :onyx/max-pending 100000
                                   :onyx/max-peers 1
                                   :onyx/doc "Reads segments from a core.async channel"}
 
@@ -97,16 +96,18 @@
                                                 ::serializer-fn
                                                 {:onyx/max-peers 1
                                                  :onyx/batch-timeout 2000
-                                                 :onyx/batch-size 20000})))
-              n-messages 200000
+                                                 :onyx/batch-size 2000})))
+              n-messages 20000
               _ (reset! in-chan (chan (inc n-messages)))
-              input-messages (map (fn [v] {:n v}) (range n-messages))]
+              input-messages (map (fn [v] {:n v 
+                                           :some-string1 "This is a string that I will increase the length of to test throughput"
+                                           :some-string2 "This is a string that I will increase the length of to test throughput"}) 
+                                  (range n-messages))]
           (run! #(>!! @in-chan %) input-messages)
           (>!! @in-chan :done)
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
-                _ (Thread/sleep 1000)
                 results (sort-by :n (retrieve-s3-results (s/new-client) bucket))]
             (is (= results input-messages)))))
       (finally
