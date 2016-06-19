@@ -29,7 +29,7 @@
                      (.getBytes (pr-str vs) "UTF-8")))
 
 (def deserializer-fn (fn [^bytes bs]
-                       (read-string (String. bs "UTF-8"))))
+                       (clojure.edn/read-string (String. bs "UTF-8"))))
 
 (defn read-object [^AmazonS3Client client ^String bucket ^String k]
   (let [object (.getObject client bucket k)
@@ -48,8 +48,6 @@
   (let [ks (get-bucket-keys client bucket)]
     (mapcat (partial read-object client bucket) ks)))
 
-(def ob )
-
 (deftest s3-output-test
   (let [id (java.util.UUID/randomUUID)
         env-config {:onyx/tenancy-id id
@@ -59,6 +57,10 @@
         peer-config {:onyx/tenancy-id id
                      :zookeeper/address "127.0.0.1:2188"
                      :onyx.peer/job-scheduler :onyx.job-scheduler/greedy
+                     :onyx.log/config {:appenders
+                                       {:println
+                                        {:min-level :trace
+                                         :enabled? true}}}
                      :onyx.messaging.aeron/embedded-driver? true
                      :onyx.messaging/allow-short-circuit? false
                      :onyx.messaging/impl :aeron
@@ -69,7 +71,7 @@
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
-        (let [batch-size 5000
+        (let [batch-size 500
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in

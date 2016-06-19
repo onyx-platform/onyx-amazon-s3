@@ -44,7 +44,7 @@
           ;; (ProgressEventType/TRANSFER_FAILED_REQUEST)
           (cond (= event-type (ProgressEventType/TRANSFER_COMPLETED_EVENT))
                 (do
-                  (info "s3plugin: progress complete. Acking." event-type " took " (- (System/currentTimeMillis) start-time))
+                  (trace "s3plugin: progress complete. Acking." event-type "took" (- (System/currentTimeMillis) start-time))
                   (run! (fn [ack] 
                           (when (dec-count! ack)
                             (when-let [site (peer-site peer-replica-view (:completion-id ack))]
