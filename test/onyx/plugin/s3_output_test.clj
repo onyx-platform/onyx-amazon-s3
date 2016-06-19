@@ -65,17 +65,20 @@
                      :onyx.messaging/impl :aeron
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
-        client (s/new-client)
+        client (s/set-region (s/new-client) "us-east-1")
         bucket (str "s3-plugin-test-" (java.util.UUID/randomUUID))
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
         (let [batch-size 50
+              n-messages 20000
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
                                   :onyx/plugin :onyx.plugin.core-async/input
                                   :onyx/type :input
+                                  ;; Allow all messages to be in flight at one time for testing purposes
+                                  :onyx/max-pending n-messages
                                   :onyx/medium :core.async
                                   :onyx/batch-size batch-size
                                   :onyx/max-peers 1
@@ -97,9 +100,8 @@
                                                 {:onyx/max-peers 1
                                                  :onyx/batch-timeout 2000
                                                  :onyx/batch-size 2000})))
-              n-messages 20000
               _ (reset! in-chan (chan (inc n-messages)))
-              input-messages (map (fn [v] {:n v 
+              input-messages (map (fn [v] {:n 3 
                                            :some-string1 "This is a string that I will increase the length of to test throughput"
                                            :some-string2 "This is a string that I will increase the length of to test throughput"}) 
                                   (range n-messages))]
