@@ -28,17 +28,16 @@
 (def serializer-fn (fn [vs] 
                      (.getBytes (pr-str vs) "UTF-8")))
 
-(def deserializer-fn (fn [^bytes bs]
-                       (clojure.edn/read-string (String. bs "UTF-8"))))
+(def deserializer-fn (fn [s]
+                       (clojure.edn/read-string s)))
 
 (defn read-object [^AmazonS3Client client ^String bucket ^String k]
   (let [object (.getObject client bucket k)
         metadata (.getObjectMetadata object)
         length (.getContentLength metadata)
         bs (byte-array length)
-        content ^S3ObjectInputStream (.getObjectContent object)
-        read-length (.read content bs)]
-    (deserializer-fn bs)))
+        content ^S3ObjectInputStream (.getObjectContent object)]
+    (deserializer-fn (slurp (clojure.java.io/reader content)))))
 
 (defn get-bucket-keys [^AmazonS3Client client ^String bucket]
   (map #(.getKey ^S3ObjectSummary %) 
@@ -67,11 +66,11 @@
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
         client (s/new-client)
-        bucket (str (java.util.UUID/randomUUID))
+        bucket (str "s3-plugin-test-" (java.util.UUID/randomUUID))
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
-        (let [batch-size 500
+        (let [batch-size 20000
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
@@ -79,7 +78,7 @@
                                   :onyx/type :input
                                   :onyx/medium :core.async
                                   :onyx/batch-size batch-size
-                                  :onyx/max-pending 100000
+                                  :onyx/max-pending 20000
                                   :onyx/max-peers 1
                                   :onyx/doc "Reads segments from a core.async channel"}
 
@@ -107,6 +106,7 @@
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
+                _ (Thread/sleep 1000)
                 results (sort-by :n (retrieve-s3-results (s/new-client) bucket))]
             (is (= results input-messages)))))
       (finally

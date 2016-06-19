@@ -33,37 +33,9 @@
                    (.setContentLength size)
                    ; (.setContentType contentType)
                    (.setContentMD5 md5))
-        upload ^Upload (.upload 
-                         transfer-manager
-                         bucket
-                         key
-                         (ByteArrayInputStream. serialized)
-                         metadata)]
+        upload ^Upload (.upload transfer-manager
+                                bucket
+                                key
+                                (ByteArrayInputStream. serialized)
+                                metadata)]
     (.addProgressListener upload progress-listener)))
-
-; (let [bucket "onyx-s3-plugin-test"
-;       key "somestupkey"
-;       serialized (byte-array 10)
-;       _ (aset serialized 0 (byte \a))]
-;   (upload (new-transfer-manager) bucket key serialized)) 
-
-(comment
-  byte [] resultByte = DigestUtils.md5 (content);
-  String streamMD5 = new String (Base64.encodeBase64 (resultByte));
-  metaData.setContentMD5 (streamMD5);
-
-
-  )
-
-(comment (.getObjectSummaries (.listObjects
-                                (new-client "ap-southeast-1")
-                                "onyx-s3-plugin-test"
-                                )))
-
-
-;; putObject (PutObjectRequest putObjectRequest)
-;; Uploads a new object to the specified Amazon S3 bucket.
-;; PutObjectResultputObject (String bucketName, String key, File file)
-;; Uploads the specified file to Amazon S3 under the specified bucket and key name.
-;; PutObjectResultputObject (String bucketName, String key, InputStream input, ObjectMetadata metadata)
-;; Uploads the specified input stream and object metadata to Amazon S3 under the specified bucket and key name.
