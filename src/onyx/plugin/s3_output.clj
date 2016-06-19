@@ -14,7 +14,9 @@
             [taoensso.timbre :as timbre :refer [error warn info trace]])
   (:import [com.amazonaws.event ProgressListener]
            [com.amazonaws.event ProgressEventType]
-           [com.amazonaws.services.s3.transfer TransferManager Upload]))
+           [com.amazonaws.services.s3.transfer TransferManager Upload]
+           [java.util TimeZone]
+           [java.text SimpleDateFormat]))
 
 (defn results->segments-acks [results]
   (mapcat (fn [{:keys [leaves]} ack]
@@ -24,6 +26,13 @@
                  leaves))
           (:tree results)
           (:acks results)))
+
+(defn default-naming-fn [event]
+  (str (.format (doto (SimpleDateFormat. "yyyy-MM-dd-hh.mm.ss.SSS")
+                  (.setTimeZone (TimeZone/getTimeZone "UTC")))
+                (java.util.Date.))
+       "_batch_"
+       (:onyx.core/lifecycle-id event)))
 
 (defn build-ack-listener [peer-replica-view messenger acks]
   (reify ProgressListener
@@ -43,7 +52,7 @@
               :else
               (trace "s3plugin: progress event." event-type))))))
 
-(defrecord S3Output [serializer-fn transfer-manager bucket]
+(defrecord S3Output [serializer-fn key-naming-fn transfer-manager bucket]
   p-ext/Pipeline
   (read-batch
     [_ event]
@@ -59,7 +68,7 @@
               event-listener (build-ack-listener peer-replica-view messenger acks)
               ;; Increment ack reference count because we are writing async
               _ (run! inc-count! (map second segments-acks))]
-          (s3/upload transfer-manager bucket (str (java.util.UUID/randomUUID)) serialized event-listener)))
+          (s3/upload transfer-manager bucket (key-naming-fn event) serialized event-listener)))
     {}))
 
   (seal-resource
@@ -77,14 +86,11 @@
    ;:lifecycle/handle-exception read-handle-exception
    :lifecycle/after-task-stop after-task-stop})
 
-;;; Configurable output pattern - TODO
-;; We often want split data according to some pattern e.g.  {bid,click}/ {year}/ {month}/ {day}.json.gz
-;; This should be configurable and based on the contents of the message.
-;; May need naming function, looked up same as serializer fn
 (defn output [event]
   (let [task-map (:onyx.core/task-map event)
         _ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
-        {:keys [s3/bucket s3/serializer-fn]} task-map
+        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn]} task-map
         transfer-manager (s3/new-transfer-manager)
-        serializer-fn (kw->fn serializer-fn)]
-    (->S3Output serializer-fn transfer-manager bucket)))
+        serializer-fn (kw->fn serializer-fn)
+        key-naming-fn (kw->fn key-naming-fn)]
+    (->S3Output serializer-fn key-naming-fn transfer-manager bucket)))

@@ -27,6 +27,7 @@ Catalog entry:
  :onyx/plugin :onyx.plugin.s3-output/output
  :s3/bucket <<BUCKET_NAME>>
  :s3/serializer-fn :clojure.core/pr-str
+ :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
  :onyx/type :output
  :onyx/medium :s3
  :onyx/batch-size 20
@@ -42,19 +43,26 @@ FIXME
 FIXME
 FIXME
 
+Lifecycle entry:
+
+```clojure
+{:lifecycle/task <<TASK_NAME>>
+ :lifecycle/calls :onyx.plugin.s3-output/s3-output-calls}
+```
+
 #### Attributes
 
 |key                           | type      | description
 |------------------------------|-----------|------------
 |`:s3/bucket`                  | `string`  | The name of the s3 bucket to write the file to
 |`:s3/serializer-fn`           | `keyword` | A keyword pointing to a fully qualified function that will serialize the batch of segments to bytes
+|`:s3/key-naming-fn`           | `keyword` | A keyword pointing to a fully qualified function that be supplied with the Onyx event map, and produce an s3 key for the batch.  
 
 #### Acknowledgments
 
 Many thanks to FIXME FIXME FIXME 
 
-[YourNameHere](http://www.yournamehere.com) for allowing this work to be open
-sourced and contributed back to the Onyx Platform community.
+[AdGoji](http://www.adgoji.com) for allowing this work to be open sourced and contributed back to the Onyx Platform community.
 
 #### Contributing
 

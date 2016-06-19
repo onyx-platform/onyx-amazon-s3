@@ -12,7 +12,10 @@
              [s3-utils :as s]]
             [onyx.tasks.s3 :as task]
             [taoensso.timbre :as timbre :refer [debug info warn]])
-  (:import [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream]))
+  (:import [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream]
+           [com.amazonaws.services.s3 AmazonS3Client]
+           [com.amazonaws.regions RegionUtils]
+           [com.amazonaws.services.s3.model ObjectMetadata]))
 
 (def in-chan (atom nil))
 
@@ -28,21 +31,18 @@
 (def deserializer-fn (fn [^bytes bs]
                        (read-string (String. bs "UTF-8"))))
 
-(defn read-object [client bucket k]
+(defn read-object [^AmazonS3Client client ^String bucket ^String k]
   (let [object (.getObject client bucket k)
         metadata (.getObjectMetadata object)
         length (.getContentLength metadata)
         bs (byte-array length)
         content ^S3ObjectInputStream (.getObjectContent object)
         read-length (.read content bs)]
-    (println read-length)
     (deserializer-fn bs)))
 
-(defn get-bucket-keys [client bucket]
+(defn get-bucket-keys [^AmazonS3Client client ^String bucket]
   (map #(.getKey ^S3ObjectSummary %) 
-       (.getObjectSummaries (.listObjects
-                              client
-                              bucket))))
+       (.getObjectSummaries (.listObjects client bucket))))
 
 (defn retrieve-s3-results [client bucket]
   (let [ks (get-bucket-keys client bucket)]
@@ -67,7 +67,6 @@
         client (s/new-client)
         bucket (str (java.util.UUID/randomUUID))
         _ (.createBucket client bucket)]
-    (println "BUCKET " bucket)
     (try
       (with-test-env [test-env [3 env-config peer-config]]
         (let [batch-size 2
@@ -99,13 +98,11 @@
               _ (reset! in-chan (chan (inc n-messages)))
               input-messages (map (fn [v] {:n v}) (range n-messages))]
           (run! #(>!! @in-chan %) input-messages)
-          (println "done")
           (>!! @in-chan :done)
-          (println "done done")
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
-                results (sort-by :n (retrieve-s3-results (s/new-client) "40cfb2d9-7338-4475-a2a7-9228565f49fb"))]
+                results (sort-by :n (retrieve-s3-results (s/new-client) bucket))]
             (is (= results input-messages)))))
       (finally
         (let [ks (get-bucket-keys client bucket)]
