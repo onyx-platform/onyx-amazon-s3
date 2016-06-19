@@ -44,14 +44,14 @@
           ;; (ProgressEventType/TRANSFER_FAILED_REQUEST)
           (cond (= event-type (ProgressEventType/TRANSFER_COMPLETED_EVENT))
                 (do
-                  (trace "s3plugin: progress complete. Acking." event-type "took" (- (System/currentTimeMillis) start-time))
+                  (info "s3plugin: progress complete. Acking." event-type "took" (- (System/currentTimeMillis) start-time))
                   (run! (fn [ack] 
                           (when (dec-count! ack)
                             (when-let [site (peer-site peer-replica-view (:completion-id ack))]
                               (extensions/internal-ack-segment messenger site ack))))
                         acks))
                 :else
-                (trace "s3plugin: progress event." event-type)))))))
+                (info "s3plugin: progress event." event-type)))))))
 
 (defrecord S3Output [serializer-fn key-naming-fn transfer-manager bucket]
   p-ext/Pipeline
