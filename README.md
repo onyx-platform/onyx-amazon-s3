@@ -34,9 +34,10 @@ Catalog entry:
  :onyx/doc "Writes segments to s3 files, one file per batch"}
 ```
 
-Segments received at this task will be serialized into a file per batch, placed at a key in the bucket which is named via the function defined at
- `:s3/key-naming-fn`. This function takes an event map and returns a string.
- Using the default naming function, `:onyx.plugin.s3-output/default-naming-fn`,
+Segments received by this task will be serialized by the `:s3/serializer-fn`,
+into a file per batch, placed at a key in the bucket which is named via the
+function defined at `:s3/key-naming-fn`. This function takes an event map and
+returns a string. Using the default naming function, `:onyx.plugin.s3-output/default-naming-fn`,
  will name keys in the following format in UTC time format:
  "yyyy-MM-dd-hh.mm.ss.SSS_batch_BATCH_UUID".
 
