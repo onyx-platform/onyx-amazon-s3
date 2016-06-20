@@ -5,7 +5,7 @@ dependencies:
 
 test:
   override:
-          - lein test:
+          - lein with-profile circleci test:
                   timeout: 480 
 
 machine:

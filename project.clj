@@ -16,7 +16,11 @@
                  [org.onyxplatform/onyx "0.9.6"]
                  [com.amazonaws/aws-java-sdk-s3 "1.11.7"]]
   :global-vars  {*warn-on-reflection* true}
-  :profiles {:dev {:dependencies []
+  :profiles {:circle-ci {:jvm-opts ["-Xmx2500M"
+                                    "-XX:+UnlockCommercialFeatures"
+                                    "-XX:+FlightRecorder"
+                                    "-XX:StartFlightRecording=duration=1080s,filename=recording.jfr"]}
+             :dev {:dependencies []
                    :plugins [[lein-set-version "0.4.1"]
                              [lein-update-dependency "0.1.2"]
                              [lein-pprint "1.1.1"]]}})

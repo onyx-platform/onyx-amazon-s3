@@ -28,6 +28,7 @@
 (def serializer-fn (fn [vs] 
                      (.getBytes (pr-str vs) "UTF-8")))
 
+
 (def deserializer-fn (fn [s]
                        (clojure.edn/read-string s)))
 
@@ -101,7 +102,7 @@
                                                  :onyx/batch-timeout 2000
                                                  :onyx/batch-size 2000})))
               _ (reset! in-chan (chan (inc n-messages)))
-              input-messages (map (fn [v] {:n 3 
+              input-messages (map (fn [v] {:n v
                                            :some-string1 "This is a string that I will increase the length of to test throughput"
                                            :some-string2 "This is a string that I will increase the length of to test throughput"}) 
                                   (range n-messages))]
