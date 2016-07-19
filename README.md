@@ -7,7 +7,7 @@ Onyx plugin for Amazon S3.
 In your project file:
 
 ```clojure
-[org.onyxplatform/onyx-amazon-s3 "0.9.8.1-SNAPSHOT"]
+[org.onyxplatform/onyx-amazon-s3 "0.9.9.0"]
 ```
 
 In your peer boot-up namespace:
