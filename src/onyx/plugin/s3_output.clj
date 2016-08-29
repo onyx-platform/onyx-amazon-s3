@@ -6,9 +6,9 @@
             [onyx.log.commands.peer-replica-view :refer [peer-site]]
             [onyx.peer
              [function :as function]
-             [operation :refer [kw->fn]]
              [pipeline-extensions :as p-ext]]
             [onyx.plugin.s3-utils :as s3]
+            [onyx.static.util :refer [kw->fn]]
             [onyx.tasks.s3 :refer [S3OutputTaskMap]]
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]])
