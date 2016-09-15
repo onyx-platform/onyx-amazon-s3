@@ -10,6 +10,7 @@
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
+   :s3/encryption s/Keyword
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-output
@@ -28,7 +29,9 @@
   ([task-name :- s/Keyword
     bucket :- s/Str
     serializer-fn :- os/NamespacedKeyword
-    task-opts :- {s/Any s/Any}]
+    task-opts :- {s/Any s/Any}
+    encryption :- {(s/optional-key :aes256) s/Keyword}]
    (s3-output task-name (merge {:s3/bucket bucket
-                                :s3/serializer-fn serializer-fn}
+                                :s3/serializer-fn serializer-fn
+                                :s3/encryption encryption}
                                task-opts))))

@@ -53,7 +53,8 @@
                 :else
                 (info "s3plugin: progress event." event-type)))))))
 
-(defrecord S3Output [serializer-fn key-naming-fn transfer-manager bucket]
+
+(defrecord S3Output [serializer-fn key-naming-fn transfer-manager bucket encryption]
   p-ext/Pipeline
   (read-batch
     [_ event]
@@ -69,7 +70,7 @@
               event-listener (build-ack-listener peer-replica-view messenger acks)
               ;; Increment ack reference count because we are writing async
               _ (run! inc-count! (map second segments-acks))]
-          (s3/upload transfer-manager bucket (key-naming-fn event) serialized event-listener)))
+          (s3/upload transfer-manager bucket encryption (key-naming-fn event) serialized event-listener)))
     {}))
 
   (seal-resource
@@ -90,8 +91,8 @@
 (defn output [event]
   (let [task-map (:onyx.core/task-map event)
         _ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
-        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn]} task-map
+        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/encryption]} task-map
         transfer-manager (s3/new-transfer-manager)
         serializer-fn (kw->fn serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
-    (->S3Output serializer-fn key-naming-fn transfer-manager bucket)))
+    (->S3Output serializer-fn key-naming-fn transfer-manager bucket encryption)))

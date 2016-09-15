@@ -26,13 +26,20 @@
   (let [credentials (DefaultAWSCredentialsProviderChain.)] 
     (TransferManager. (AmazonS3Client. credentials))))
 
-(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^ProgressListener progress-listener]
+(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^clojure.lang.Keyword encryption ^bytes serialized ^ProgressListener progress-listener]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
-        metadata (doto (ObjectMetadata.)
-                   (.setContentLength size)
-                   ; (.setContentType contentType)
-                   (.setContentMD5 md5))
+        metadata (if (= encryption :aes256)
+                   (doto (ObjectMetadata.)
+                     (.setContentLength size)
+                     ;; (.setContentType contentType)
+                     (.setContentMD5 md5))
+                   (doto (ObjectMetadata.)
+                     (.setContentLength size)
+                     ;; (.setContentType contentType)
+                     (.setSSEAlgorithm "AES256")
+                     (.setContentMD5 md5)))
+        
         upload ^Upload (.upload transfer-manager
                                 bucket
                                 key

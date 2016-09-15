@@ -2,7 +2,7 @@
   (:require [clojure.core.async
              :refer
              [<!! >!! alts!! chan close! sliding-buffer timeout]]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [deftest is testing run-tests]]
             [onyx api
              [job :refer [add-task]]
              [test-helper :refer [add-test-env-peers! feedback-exception! load-config with-test-env]]]
@@ -119,3 +119,6 @@
                   (.deleteObject client bucket k))
                 ks)
           (.deleteBucket client bucket))))))
+
+
+;; (run-tests)
