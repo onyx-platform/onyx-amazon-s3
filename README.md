@@ -26,6 +26,7 @@ Catalog entry:
 {:onyx/name <<TASK_NAME>>
  :onyx/plugin :onyx.plugin.s3-output/output
  :s3/bucket <<BUCKET_NAME>>
+ :s3/encryption :none
  :s3/serializer-fn :clojure.core/pr-str
  :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
  :onyx/type :output
@@ -40,6 +41,7 @@ function defined at `:s3/key-naming-fn`. This function takes an event map and
 returns a string. Using the default naming function, `:onyx.plugin.s3-output/default-naming-fn`,
  will name keys in the following format in UTC time format:
  "yyyy-MM-dd-hh.mm.ss.SSS_batch_BATCH_UUID".
+You can define `:s3/encryption` to be `:aes256` if your S3 bucket has encryption enabled. The default value is `:none`.
 
 
 Lifecycle entry:
