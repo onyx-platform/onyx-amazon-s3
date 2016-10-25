@@ -70,7 +70,7 @@
               event-listener (build-ack-listener peer-replica-view messenger acks)
               ;; Increment ack reference count because we are writing async
               _ (run! inc-count! (map second segments-acks))]
-          (s3/upload transfer-manager bucket encryption (key-naming-fn event) serialized event-listener)))
+          (s3/upload transfer-manager bucket (key-naming-fn event) encryption serialized event-listener)))
     {}))
 
   (seal-resource
