@@ -56,6 +56,7 @@ Lifecycle entry:
 |`:s3/bucket`                  | `string`  | The name of the s3 bucket to write the file to
 |`:s3/serializer-fn`           | `keyword` | A keyword pointing to a fully qualified function that will serialize the batch of segments to bytes
 |`:s3/key-naming-fn`           | `keyword` | A keyword pointing to a fully qualified function that be supplied with the Onyx event map, and produce an s3 key for the batch.  
+|`:s3/content-type`            | `string`  | Optional content type for value
 
 #### Acknowledgments
 

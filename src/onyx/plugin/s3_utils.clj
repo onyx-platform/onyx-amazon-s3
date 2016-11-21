@@ -7,11 +7,12 @@
            [java.io ByteArrayInputStream]
            [com.amazonaws.services.s3.transfer TransferManager Upload]
            [com.amazonaws.event ProgressListener]
+           [com.amazonaws.event ProgressListener$ExceptionReporter]
+           ;[com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
            [org.apache.commons.codec.digest DigestUtils]
-           [org.apache.commons.codec.binary Base64]
-           ;; Just for testing
-           [java.nio.file Files FileSystems]))
+           [com.amazonaws.services.s3.model PutObjectRequest]
+           [org.apache.commons.codec.binary Base64]))
 
 
 (defn new-client ^AmazonS3Client []
@@ -26,16 +27,24 @@
   (let [credentials (DefaultAWSCredentialsProviderChain.)] 
     (TransferManager. (AmazonS3Client. credentials))))
 
-(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^ProgressListener progress-listener]
+(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^String content-type ^ProgressListener progress-listener]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
         metadata (doto (ObjectMetadata.)
                    (.setContentLength size)
-                   ; (.setContentType contentType)
                    (.setContentMD5 md5))
-        upload ^Upload (.upload transfer-manager
+        metadata (if content-type 
+                   (doto metadata
+                     (.setContentType content-type))
+                   metadata)
+        put-request (PutObjectRequest. bucket
+                                       key
+                                       (ByteArrayInputStream. serialized)
+                                       metadata)
+        upload ^Upload (.upload transfer-manager 
                                 bucket
                                 key
                                 (ByteArrayInputStream. serialized)
                                 metadata)]
-    (.addProgressListener upload progress-listener)))
+    (doto upload
+      (.addProgressListener progress-listener))))

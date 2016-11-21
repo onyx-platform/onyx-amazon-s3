@@ -28,7 +28,6 @@
 (def serializer-fn (fn [vs] 
                      (.getBytes (pr-str vs) "UTF-8")))
 
-
 (def deserializer-fn (fn [s]
                        (clojure.edn/read-string s)))
 
