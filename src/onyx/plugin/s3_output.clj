@@ -12,9 +12,10 @@
             [onyx.tasks.s3 :refer [S3OutputTaskMap]]
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]])
-  (:import [com.amazonaws.event ProgressListener]
-           [com.amazonaws.event ProgressEventType]
-           [com.amazonaws.services.s3.transfer TransferManager Upload]
+  (:import [com.amazonaws.event ProgressEventType]
+           [com.amazonaws.event ProgressListener]
+           ;[com.amazonaws.services.s3.transfer.internal S3ProgressListener]
+           [com.amazonaws.services.s3.transfer TransferManager Upload Transfer$TransferState]
            [java.util TimeZone]
            [java.text SimpleDateFormat]))
 
@@ -34,26 +35,41 @@
        "_batch_"
        (:onyx.core/lifecycle-id event)))
 
-(defn build-ack-listener [peer-replica-view messenger acks]
+
+(defn build-ack-listener [fail-fn complete-fn peer-replica-view messenger acks]
   (let [start-time (System/currentTimeMillis)] 
     (reify ProgressListener
       (progressChanged [this progressEvent]
         (let [event-type (.getEventType progressEvent)] 
           ;; TODO:
-          ;; Fail out? cause peer to reboot?
-          ;; (ProgressEventType/TRANSFER_FAILED_REQUEST)
-          (cond (= event-type (ProgressEventType/TRANSFER_COMPLETED_EVENT))
+          (cond (= event-type (ProgressEventType/CLIENT_REQUEST_FAILED_EVENT))
+                (info "Client request failed" event-type)
+                (= event-type (ProgressEventType/TRANSFER_FAILED_EVENT))
                 (do
-                  (info "s3plugin: progress complete. Acking." event-type "took" (- (System/currentTimeMillis) start-time))
-                  (run! (fn [ack] 
-                          (when (dec-count! ack)
-                            (when-let [site (peer-site peer-replica-view (:completion-id ack))]
-                              (extensions/internal-ack-segment messenger site ack))))
-                        acks))
+                 (info "Transfer failed." event-type)
+                 (fail-fn))
+                (= event-type (ProgressEventType/TRANSFER_COMPLETED_EVENT))
+                (do
+                 (complete-fn)
+                 (info "s3plugin: progress complete. Acking." event-type "took" (- (System/currentTimeMillis) start-time))
+                 (run! (fn [ack] 
+                         (when (dec-count! ack)
+                           (when-let [site (peer-site peer-replica-view (:completion-id ack))]
+                             (extensions/internal-ack-segment messenger site ack))))
+                       acks))
                 :else
-                (info "s3plugin: progress event." event-type)))))))
+                (trace "s3plugin: progress event." event-type)))))))
 
-(defrecord S3Output [serializer-fn key-naming-fn transfer-manager bucket]
+(defn check-failures! [transfers]
+  (let [failed-uploads (filter (fn [upload]
+                                 (= (Transfer$TransferState/Failed)
+                                    (.getState upload)))
+                               (vals @transfers))]
+    (when-not (empty? failed-uploads)
+      (when-let [e (.waitForException (first failed-uploads))]
+        (throw e)))))
+
+(defrecord S3Output [serializer-fn key-naming-fn content-type transfer-manager transfers bucket]
   p-ext/Pipeline
   (read-batch
     [_ event]
@@ -64,12 +80,17 @@
     (let [acks (:acks results)
           segments-acks (results->segments-acks results)
           segments (map first segments-acks)]
+      (check-failures! transfers)
       (when-not (empty? segments)
         (let [serialized (serializer-fn segments)
-              event-listener (build-ack-listener peer-replica-view messenger acks)
+              file-name (key-naming-fn event)
+              fail-fn (fn [] (swap! transfers dissoc file-name))
+              complete-fn (fn [] (swap! transfers dissoc file-name))
+              event-listener (build-ack-listener fail-fn complete-fn peer-replica-view messenger acks)
               ;; Increment ack reference count because we are writing async
-              _ (run! inc-count! (map second segments-acks))]
-          (s3/upload transfer-manager bucket (key-naming-fn event) serialized event-listener)))
+              _ (run! inc-count! (map second segments-acks))
+              upload (s3/upload transfer-manager bucket file-name serialized content-type event-listener)]
+              (swap! transfers assoc file-name upload)))
     {}))
 
   (seal-resource
@@ -81,17 +102,20 @@
 (defn before-task-start [event lifecycle]
   {:s3/transfer-manager (:transfer-manager (:onyx.core/pipeline event))})
 
+(defn read-handle-exception [event lifecycle lf-kw exception]
+  :restart)
+
 (def s3-output-calls
   {:lifecycle/before-task-start before-task-start
-   ;; Implement handle-exception once it's decided in build-ack-listener 
-   ;:lifecycle/handle-exception read-handle-exception
+   :lifecycle/handle-exception read-handle-exception
    :lifecycle/after-task-stop after-task-stop})
 
 (defn output [event]
   (let [task-map (:onyx.core/task-map event)
         _ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
-        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn]} task-map
+        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/content-type]} task-map
         transfer-manager (s3/new-transfer-manager)
+        transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
-    (->S3Output serializer-fn key-naming-fn transfer-manager bucket)))
+    (->S3Output serializer-fn key-naming-fn content-type transfer-manager transfers bucket)))
