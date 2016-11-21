@@ -102,10 +102,12 @@
 (defn before-task-start [event lifecycle]
   {:s3/transfer-manager (:transfer-manager (:onyx.core/pipeline event))})
 
+(defn read-handle-exception [event lifecycle lf-kw exception]
+  :restart)
+
 (def s3-output-calls
   {:lifecycle/before-task-start before-task-start
-   ;; Implement handle-exception once it's decided in build-ack-listener 
-   ;:lifecycle/handle-exception read-handle-exception
+   :lifecycle/handle-exception read-handle-exception
    :lifecycle/after-task-stop after-task-stop})
 
 (defn output [event]
