@@ -1,4 +1,4 @@
-(defproject org.onyxplatform/onyx-amazon-s3 "0.9.13.1"
+(defproject org.onyxplatform/onyx-amazon-s3 "0.9.13.2-SNAPSHOT"
   :description "Onyx plugin for Amazon S3"
   :url "https://github.com/onyx-platform/onyx-amazon-s3"
   :license {:name "Eclipse Public License"
