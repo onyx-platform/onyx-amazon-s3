@@ -26,16 +26,21 @@
   (let [credentials (DefaultAWSCredentialsProviderChain.)] 
     (TransferManager. (AmazonS3Client. credentials))))
 
-(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^String content-type ^S3ProgressListener progress-listener]
+(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^String content-type 
+              encryption ^S3ProgressListener progress-listener]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
-        metadata (doto (ObjectMetadata.)
-                   (.setContentLength size)
-                   (.setContentMD5 md5))
-        metadata (if content-type 
-                   (doto metadata
-                     (.setContentType content-type))
-                   metadata)
+        encryption-setting (case encryption 
+                             :aes256 
+                             (ObjectMetadata/AES_256_SERVER_SIDE_ENCRYPTION)
+                             :none nil
+                             (throw (ex-info "Unsupported encryption type." {:encryption encryption})))
+        metadata (ObjectMetadata.)
+        _ (.setContentLength metadata size)
+        _ (cond-> metadata
+            content-type (.setContentMD5 md5))
+        _ (cond-> metadata
+            encryption-setting (.setSSEAlgorithm encryption-setting))
         put-request (PutObjectRequest. bucket
                                        key
                                        (ByteArrayInputStream. serialized)

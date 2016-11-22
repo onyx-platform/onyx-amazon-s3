@@ -6,11 +6,14 @@
 ;;;;;;;;;;;;;;
 ;; task schemas
 
+(def Encryption (s/enum :aes256 :none))
+
 (def S3OutputTaskMap
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
-   :s3/content-type s/Str
+   (s/optional-key :s3/content-type) s/Str
+   (s/optional-key :s3/encryption) Encryption
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-output
@@ -20,6 +23,7 @@
                              :onyx/type :output
                              :onyx/medium :s3
                              :onyx/batch-size 10
+                             :s3/encryption :none
                              :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
                              :onyx/doc "Writes segments to files in an S3 bucket."}
                             task-opts)

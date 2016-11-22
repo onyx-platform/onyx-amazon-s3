@@ -2,7 +2,7 @@
   (:require [clojure.core.async
              :refer
              [<!! >!! alts!! chan close! sliding-buffer timeout]]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [deftest is testing run-tests]]
             [onyx api
              [job :refer [add-task]]
              [test-helper :refer [add-test-env-peers! feedback-exception! load-config with-test-env]]]
@@ -35,6 +35,7 @@
   (let [object (.getObject client bucket k)
         metadata (.getObjectMetadata object)
         length (.getContentLength metadata)
+        sse (.getSSEAlgorithm metadata)
         bs (byte-array length)
         content ^S3ObjectInputStream (.getObjectContent object)]
     (deserializer-fn (slurp (clojure.java.io/reader content)))))
@@ -98,6 +99,7 @@
                                                 bucket
                                                 ::serializer-fn
                                                 {:onyx/max-peers 1
+                                                 :s3/encryption :aes256
                                                  :onyx/batch-timeout 2000
                                                  :onyx/batch-size 2000})))
               _ (reset! in-chan (chan (inc n-messages)))
@@ -118,3 +120,6 @@
                   (.deleteObject client bucket k))
                 ks)
           (.deleteBucket client bucket))))))
+
+
+;; (run-tests)
