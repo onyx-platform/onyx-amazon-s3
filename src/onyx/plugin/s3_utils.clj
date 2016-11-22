@@ -6,9 +6,8 @@
            [com.amazonaws.services.s3.model ObjectMetadata]
            [java.io ByteArrayInputStream]
            [com.amazonaws.services.s3.transfer TransferManager Upload]
-           [com.amazonaws.event ProgressListener]
            [com.amazonaws.event ProgressListener$ExceptionReporter]
-           ;[com.amazonaws.services.s3.transfer.internal S3ProgressListener]
+           [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
            [org.apache.commons.codec.digest DigestUtils]
            [com.amazonaws.services.s3.model PutObjectRequest]
@@ -27,7 +26,7 @@
   (let [credentials (DefaultAWSCredentialsProviderChain.)] 
     (TransferManager. (AmazonS3Client. credentials))))
 
-(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^String content-type ^ProgressListener progress-listener]
+(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^String content-type ^S3ProgressListener progress-listener]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
         metadata (doto (ObjectMetadata.)
@@ -41,10 +40,5 @@
                                        key
                                        (ByteArrayInputStream. serialized)
                                        metadata)
-        upload ^Upload (.upload transfer-manager 
-                                bucket
-                                key
-                                (ByteArrayInputStream. serialized)
-                                metadata)]
-    (doto upload
-      (.addProgressListener progress-listener))))
+        upload ^Upload (.upload transfer-manager put-request progress-listener)]
+    upload))

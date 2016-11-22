@@ -13,8 +13,7 @@
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]])
   (:import [com.amazonaws.event ProgressEventType]
-           [com.amazonaws.event ProgressListener]
-           ;[com.amazonaws.services.s3.transfer.internal S3ProgressListener]
+           [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.services.s3.transfer TransferManager Upload Transfer$TransferState]
            [java.util TimeZone]
            [java.text SimpleDateFormat]))
@@ -37,8 +36,8 @@
 
 
 (defn build-ack-listener [fail-fn complete-fn peer-replica-view messenger acks]
-  (let [start-time (System/currentTimeMillis)] 
-    (reify ProgressListener
+  (let [start-time (System/currentTimeMillis)]
+    (reify S3ProgressListener
       (progressChanged [this progressEvent]
         (let [event-type (.getEventType progressEvent)] 
           ;; TODO:
