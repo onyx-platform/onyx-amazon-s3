@@ -10,6 +10,7 @@
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
+   :s3/content-type s/Str
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-output
