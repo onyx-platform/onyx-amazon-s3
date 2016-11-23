@@ -13,8 +13,7 @@
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]])
   (:import [com.amazonaws.event ProgressEventType]
-           [com.amazonaws.event ProgressListener]
-           ;[com.amazonaws.services.s3.transfer.internal S3ProgressListener]
+           [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.services.s3.transfer TransferManager Upload Transfer$TransferState]
            [java.util TimeZone]
            [java.text SimpleDateFormat]))
@@ -37,8 +36,8 @@
 
 
 (defn build-ack-listener [fail-fn complete-fn peer-replica-view messenger acks]
-  (let [start-time (System/currentTimeMillis)] 
-    (reify ProgressListener
+  (let [start-time (System/currentTimeMillis)]
+    (reify S3ProgressListener
       (progressChanged [this progressEvent]
         (let [event-type (.getEventType progressEvent)] 
           ;; TODO:
@@ -69,7 +68,7 @@
       (when-let [e (.waitForException (first failed-uploads))]
         (throw e)))))
 
-(defrecord S3Output [serializer-fn key-naming-fn content-type transfer-manager transfers bucket]
+(defrecord S3Output [serializer-fn key-naming-fn content-type encryption transfer-manager transfers bucket]
   p-ext/Pipeline
   (read-batch
     [_ event]
@@ -89,7 +88,7 @@
               event-listener (build-ack-listener fail-fn complete-fn peer-replica-view messenger acks)
               ;; Increment ack reference count because we are writing async
               _ (run! inc-count! (map second segments-acks))
-              upload (s3/upload transfer-manager bucket file-name serialized content-type event-listener)]
+              upload (s3/upload transfer-manager bucket file-name serialized content-type encryption event-listener)]
               (swap! transfers assoc file-name upload)))
     {}))
 
@@ -114,8 +113,9 @@
   (let [task-map (:onyx.core/task-map event)
         _ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
         {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/content-type]} task-map
+        encryption (or (:s3/encryption task-map) :none)
         transfer-manager (s3/new-transfer-manager)
         transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
-    (->S3Output serializer-fn key-naming-fn content-type transfer-manager transfers bucket)))
+    (->S3Output serializer-fn key-naming-fn content-type encryption transfer-manager transfers bucket)))
