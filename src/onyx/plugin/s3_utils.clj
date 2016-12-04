@@ -50,12 +50,19 @@
         upload ^Upload (.upload transfer-manager put-request progress-listener)]
     upload))
 
-(defn buffered-s3-reader ^BufferedReader [^AmazonS3Client client ^String bucket ^String k]
-  (let [object (.getObject client (GetObjectRequest. bucket k))
+;; S3 OUTPUT PLUGIN NEEDS TO BE ABLE TO WRITE LINE BY LINE pr-str, AS WELL AS FULL COLLECTION pr-str'd. i.e. unwrap
+
+(defn buffered-s3-reader ^BufferedReader 
+  [^AmazonS3Client client ^String bucket ^String k & [start-range]]
+  (let [object-request (GetObjectRequest. bucket k)
+        _ (when start-range
+            (.setRange object-request start-range))
+        object (.getObject client object-request)
         reader (BufferedReader. (InputStreamReader. (.getObjectContent object)))]
     reader))
 
-; (.readLine (buffered-s3-reader (new-client) "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" "onyx.log.001"))
+
+
 
 (defn list-keys [^AmazonS3Client client ^String bucket ^String prefix]
   (loop [listing (.listObjects client bucket prefix) ks []]
@@ -66,7 +73,17 @@
         (recur (.listObjects client bucket prefix) new-ks)
         new-ks))))
 
-;(list-keys (new-client) "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" "") 
+(comment 
+ (.readLine (buffered-s3-reader (new-client) 
+                                "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" 
+                                "2016-11-21-02.36.22.218_batch_4dbcfabd-1cd0-d6dd-28cb-d18e1b92ad29"
+                                374000
+
+                                ))
+ 
+ (rest 
+  (drop-while #(not= "2016-11-21-02.36.22.218_batch_4dbcfabd-1cd0-d6dd-28cb-d18e1b92ad29" %) 
+              (list-keys (new-client) "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" "")))) 
 
 
 ;; ONLY DO ONE FILE AT A TIME
