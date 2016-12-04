@@ -12,6 +12,10 @@
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
+   (s/optional-key :s3/serialize-per-element?) s/Bool
+   (s/optional-key :s3/prefix) s/Str
+   (s/optional-key :s3/endpoint) s/Str
+   (s/optional-key :s3/region) s/Str
    (s/optional-key :s3/content-type) s/Str
    (s/optional-key :s3/encryption) Encryption
    (os/restricted-ns :s3) s/Any})
@@ -37,3 +41,32 @@
    (s3-output task-name (merge {:s3/bucket bucket
                                 :s3/serializer-fn serializer-fn}
                                task-opts))))
+
+(def S3InputTaskMap 
+  {:s3/deserializer-fn os/NamespacedKeyword
+   :s3/bucket s/Str
+   :s3/prefix s/Str
+   (os/restricted-ns :s3) s/Any})
+
+(s/defn ^:always-validate s3-input
+  ([task-name :- s/Keyword task-opts :- {s/Any s/Any}]
+   {:task {:task-map (merge {:onyx/name task-name
+                             :onyx/plugin :onyx.plugin.s3-input/input
+                             :onyx/type :input
+                             :onyx/medium :s3
+                             :onyx/batch-size 20
+                             :onyx/max-peers 1
+                             :onyx/doc "Reads segments from keys in an S3 bucket."}
+                            task-opts)
+           :lifecycles [{:lifecycle/task task-name
+                         :lifecycle/calls :onyx.plugin.s3-input/s3-input-calls}]}
+    :schema {:task-map S3InputTaskMap}})
+  ([task-name :- s/Keyword
+    bucket :- s/Str
+    prefix :- s/Str
+    deserializer-fn :- os/NamespacedKeyword
+    task-opts :- {s/Any s/Any}]
+   (s3-input task-name (merge {:s3/bucket bucket
+                               :s3/prefix prefix
+                               :s3/deserializer-fn deserializer-fn}
+                              task-opts))))
