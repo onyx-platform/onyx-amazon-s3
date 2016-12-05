@@ -4,17 +4,14 @@
            [com.amazonaws.services.s3 AmazonS3Client]
            [com.amazonaws.regions RegionUtils]
            [com.amazonaws.services.s3.model ObjectMetadata]
-           [java.io ByteArrayInputStream BufferedReader InputStreamReader]
+           [java.io ByteArrayInputStream]
            [com.amazonaws.services.s3.transfer TransferManager Upload]
            [com.amazonaws.event ProgressListener$ExceptionReporter]
-           [com.amazonaws.services.s3.model S3ObjectSummary]
+           [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
            [org.apache.commons.codec.digest DigestUtils]
-           [com.amazonaws.services.s3.model PutObjectRequest]
-           [com.amazonaws.services.s3.model GetObjectRequest]
            [org.apache.commons.codec.binary Base64]))
-
 
 (defn new-client ^AmazonS3Client []
   (let [credentials (DefaultAWSCredentialsProviderChain.)]
@@ -52,17 +49,15 @@
 
 ;; S3 OUTPUT PLUGIN NEEDS TO BE ABLE TO WRITE LINE BY LINE pr-str, AS WELL AS FULL COLLECTION pr-str'd. i.e. unwrap
 
-(defn buffered-s3-reader ^BufferedReader 
+(defn s3-object-input-stream ^S3ObjectInputStream
   [^AmazonS3Client client ^String bucket ^String k & [start-range]]
   (let [object-request (GetObjectRequest. bucket k)
         _ (when start-range
             (.setRange object-request start-range))
         object (.getObject client object-request)
-        reader (BufferedReader. (InputStreamReader. (.getObjectContent object)))]
-    reader))
-
-
-
+        ;reader (BufferedReader. (InputStreamReader. ))
+        ]
+    (.getObjectContent object)))
 
 (defn list-keys [^AmazonS3Client client ^String bucket ^String prefix]
   (loop [listing (.listObjects client bucket prefix) ks []]
