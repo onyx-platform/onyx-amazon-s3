@@ -1,15 +1,14 @@
 (ns onyx.plugin.s3-utils
   (:import [com.amazonaws.auth DefaultAWSCredentialsProviderChain]
            [com.amazonaws.handlers AsyncHandler]
-           [com.amazonaws.services.s3 AmazonS3Client]
            [com.amazonaws.regions RegionUtils]
-           [com.amazonaws.services.s3.model ObjectMetadata]
-           [java.io ByteArrayInputStream]
-           [com.amazonaws.services.s3.transfer TransferManager Upload]
            [com.amazonaws.event ProgressListener$ExceptionReporter]
-           [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest]
+           [com.amazonaws.services.s3.transfer TransferManager Upload]
+           [com.amazonaws.services.s3 AmazonS3Client]
+           [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
+           [java.io ByteArrayInputStream]
            [org.apache.commons.codec.digest DigestUtils]
            [org.apache.commons.codec.binary Base64]))
 
@@ -17,15 +16,19 @@
   (let [credentials (DefaultAWSCredentialsProviderChain.)]
     (AmazonS3Client. credentials)))
 
+(defn set-endpoint [^AmazonS3Client client ^String endpoint]
+  (doto client
+    (.setEndpoint endpoint)))
+
 (defn set-region [^AmazonS3Client client region]
   (doto client
     (.setRegion (RegionUtils/getRegion region))))
 
-(defn new-transfer-manager ^TransferManager []
-  (let [credentials (DefaultAWSCredentialsProviderChain.)] 
-    (TransferManager. (AmazonS3Client. credentials))))
+(defn transfer-manager ^TransferManager [^AmazonS3Client client]
+  (TransferManager. client))
 
-(defn upload [^TransferManager transfer-manager ^String bucket ^String key ^bytes serialized ^String content-type 
+(defn upload [^TransferManager transfer-manager ^String bucket ^String key 
+              ^bytes serialized ^String content-type 
               encryption ^S3ProgressListener progress-listener]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
@@ -33,13 +36,15 @@
                              :aes256 
                              (ObjectMetadata/AES_256_SERVER_SIDE_ENCRYPTION)
                              :none nil
-                             (throw (ex-info "Unsupported encryption type." {:encryption encryption})))
-        metadata (ObjectMetadata.)
-        _ (.setContentLength metadata size)
-        _ (cond-> metadata
-            content-type (.setContentMD5 md5))
-        _ (cond-> metadata
-            encryption-setting (.setSSEAlgorithm encryption-setting))
+                             (throw (ex-info "Unsupported encryption type." 
+                                             {:encryption encryption})))
+        metadata (doto (ObjectMetadata.)
+                  (.setContentLength size)
+                  (.setContentMD5 md5))
+        _ (when content-type
+            (.setContentType metadata content-type))
+        _  (when encryption-setting 
+             (.setSSEAlgorithm metadata encryption-setting))
         put-request (PutObjectRequest. bucket
                                        key
                                        (ByteArrayInputStream. serialized)
@@ -47,16 +52,24 @@
         upload ^Upload (.upload transfer-manager put-request progress-listener)]
     upload))
 
-;; S3 OUTPUT PLUGIN NEEDS TO BE ABLE TO WRITE LINE BY LINE pr-str, AS WELL AS FULL COLLECTION pr-str'd. i.e. unwrap
+(defn upload-synchronous [^AmazonS3Client client ^String bucket ^String k ^bytes serialized]
+  (let [size (alength serialized)
+        md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
+        metadata (doto (ObjectMetadata.)
+                  (.setContentMD5 md5)
+                  (.setContentLength size))]
+    (.putObject client
+                bucket
+                k
+                (ByteArrayInputStream. serialized)
+                metadata)))
 
 (defn s3-object-input-stream ^S3ObjectInputStream
   [^AmazonS3Client client ^String bucket ^String k & [start-range]]
   (let [object-request (GetObjectRequest. bucket k)
         _ (when start-range
             (.setRange object-request start-range))
-        object (.getObject client object-request)
-        ;reader (BufferedReader. (InputStreamReader. ))
-        ]
+        object (.getObject client object-request)]
     (.getObjectContent object)))
 
 (defn list-keys [^AmazonS3Client client ^String bucket ^String prefix]

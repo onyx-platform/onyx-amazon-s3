@@ -12,6 +12,9 @@
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
+   (s/optional-key :s3/prefix) s/Str
+   (s/optional-key :s3/endpoint) s/Str
+   (s/optional-key :s3/region) s/Str
    (s/optional-key :s3/content-type) s/Str
    (s/optional-key :s3/encryption) Encryption
    (os/restricted-ns :s3) s/Any})
