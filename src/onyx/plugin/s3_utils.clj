@@ -8,7 +8,7 @@
            [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
-           [java.io ByteArrayInputStream]
+           [java.io ByteArrayInputStream InputStreamReader BufferedReader]
            [org.apache.commons.codec.digest DigestUtils]
            [org.apache.commons.codec.binary Base64]))
 
@@ -81,17 +81,10 @@
         (recur (.listObjects client bucket prefix) new-ks)
         new-ks))))
 
-(comment 
- (.readLine (buffered-s3-reader (new-client) 
-                                "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" 
-                                "2016-11-21-02.36.22.218_batch_4dbcfabd-1cd0-d6dd-28cb-d18e1b92ad29"
-                                374000
-
-                                ))
  
  (rest 
   (drop-while #(not= "2016-11-21-02.36.22.218_batch_4dbcfabd-1cd0-d6dd-28cb-d18e1b92ad29" %) 
-              (list-keys (new-client) "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" "")))) 
+              (list-keys (new-client) "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" ""))) 
 
 
 ;; ONLY DO ONE FILE AT A TIME

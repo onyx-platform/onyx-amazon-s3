@@ -120,13 +120,13 @@
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
-                retrieved (retrieve-s3-results client bucket)
+                retrieved (retrieve-s3-results client bucket prefix)
                 _ (println "Retrieved " retrieved)
                 results (sort-by :n retrieved)]
             (is (= results input-messages)))))
-      (finally
+      #_(finally
         (let [ks (s/list-keys client bucket prefix)]
           (run! (fn [k]
                   (.deleteObject ^AmazonS3Client client ^String bucket ^String k))
                 ks)
-          (.deleteBucket ^AmazonS3Client client ^String bucket))))))
+          #_(.deleteBucket ^AmazonS3Client client ^String bucket))))))
