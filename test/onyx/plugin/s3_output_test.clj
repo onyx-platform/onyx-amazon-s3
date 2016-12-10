@@ -25,14 +25,11 @@
 (def in-calls
   {:lifecycle/before-task-start inject-in-ch})
 
-(def serializer-fn 
-  (fn [vs] 
-    (.getBytes (clojure.string/join "\n" (map #(pr-str %) vs))
-               "UTF-8")))
+(def serializer-fn (fn [vs] 
+                     (.getBytes (pr-str vs) "UTF-8")))
 
-(def deserializer-fn 
-  (fn [s]
-    (map clojure.edn/read-string (clojure.string/split s #"\n"))))
+(def deserializer-fn (fn [s]
+                       (clojure.edn/read-string s)))
 
 (defn read-object [^AmazonS3Client client ^String bucket ^String k]
   (let [object (.getObject client bucket k)
@@ -43,8 +40,12 @@
         content ^S3ObjectInputStream (.getObjectContent object)]
     (deserializer-fn (slurp (clojure.java.io/reader content)))))
 
-(defn retrieve-s3-results [client bucket prefix]
-  (let [ks (s/list-keys client bucket prefix)]
+(defn get-bucket-keys [^AmazonS3Client client ^String bucket]
+  (map #(.getKey ^S3ObjectSummary %) 
+       (.getObjectSummaries (.listObjects client bucket))))
+
+(defn retrieve-s3-results [client bucket]
+  (let [ks (get-bucket-keys client bucket)]
     (mapcat (partial read-object client bucket) ks)))
 
 (deftest s3-output-test
@@ -65,20 +66,13 @@
                      :onyx.messaging/impl :aeron
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
-        endpoint nil ;"http://127.0.0.1:4567"
-        encryption :aes256
-        region "us-east-1"
-        client (cond-> (s/new-client)
-                 endpoint (s/set-endpoint endpoint)
-                 region (s/set-region region))
-        bucket (str "s3-plugin-test-onyx")
-        prefix (str (java.util.UUID/randomUUID) "/")
-        _ (println "BUCKET" bucket)
-        _ (.createBucket ^AmazonS3Client client ^String bucket)]
+        client (s/set-region (s/new-client) "us-east-1")
+        bucket (str "s3-plugin-test-" (java.util.UUID/randomUUID))
+        _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
         (let [batch-size 50
-              n-messages 2
+              n-messages 20000
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
@@ -105,11 +99,9 @@
                                                 bucket
                                                 ::serializer-fn
                                                 {:onyx/max-peers 1
-                                                 ;:s3/endpoint endpoint
-                                                 :s3/prefix prefix
                                                  :s3/encryption :aes256
-                                                 :onyx/batch-timeout 50
-                                                 :onyx/batch-size 2})))
+                                                 :onyx/batch-timeout 2000
+                                                 :onyx/batch-size 2000})))
               _ (reset! in-chan (chan (inc n-messages)))
               input-messages (map (fn [v] {:n v
                                            :some-string1 "This is a string that I will increase the length of to test throughput"
@@ -120,13 +112,14 @@
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
-                retrieved (retrieve-s3-results client bucket prefix)
-                _ (println "Retrieved " retrieved)
-                results (sort-by :n retrieved)]
+                results (sort-by :n (retrieve-s3-results (s/new-client) bucket))]
             (is (= results input-messages)))))
-      #_(finally
-        (let [ks (s/list-keys client bucket prefix)]
+      (finally
+        (let [ks (get-bucket-keys client bucket)]
           (run! (fn [k]
-                  (.deleteObject ^AmazonS3Client client ^String bucket ^String k))
+                  (.deleteObject client bucket k))
                 ks)
-          #_(.deleteBucket ^AmazonS3Client client ^String bucket))))))
+          (.deleteBucket client bucket))))))
+
+
+;; (run-tests)

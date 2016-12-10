@@ -72,17 +72,13 @@
 
 (defn serialize-per-element [serializer-fn elements]
   (with-open [baos (ByteArrayOutputStream.)] 
-    (let [nl (byte-array (byte \n))] 
-      (run! (fn [element]
-              (let [bs ^bytes (serializer-fn element)]
-                (.write baos bs 0 (alength bs))
-                #_(.write baos nl 0 1)))
-            elements))
+    (run! (fn [element]
+            (let [bs ^bytes (serializer-fn element)]
+              (.write baos bs 0 (alength bs))))
+          elements)
     (.toByteArray baos)))
 
-;(serialize-per-element serializer-fn [{:a 3} {:b 4}])
-
-(defrecord S3Output [serializer-fn prefix key-naming-fn serialize-per-element? content-type 
+(defrecord S3Output [serializer-fn prefix key-naming-fn content-type 
                      encryption ^AmazonS3Client client ^TransferManager transfer-manager transfers bucket]
   p-ext/Pipeline
   (read-batch
@@ -96,7 +92,7 @@
           segments (map first segments-acks)]
       (check-failures! transfers)
       (when-not (empty? segments)
-        (let [serialized (serialize-per-element serializer-fn segments)
+        (let [serialized (serializer-fn segments)
               file-name (str prefix (key-naming-fn event))
               fail-fn (fn [] (swap! transfers dissoc file-name))
               complete-fn (fn [] (swap! transfers dissoc file-name))
@@ -142,5 +138,8 @@
         transfer-manager (s3/transfer-manager client)
         transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
+        serializer-fn (if serialize-per-element? 
+                        (fn [segments] (serialize-per-element serializer-fn segments))
+                        serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
-    (->S3Output serializer-fn prefix key-naming-fn serialize-per-element? content-type encryption client transfer-manager transfers bucket)))
+    (->S3Output serializer-fn prefix key-naming-fn content-type encryption client transfer-manager transfers bucket)))
