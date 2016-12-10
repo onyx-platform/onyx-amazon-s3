@@ -6,6 +6,7 @@
              [test-helper :refer [add-test-env-peers! feedback-exception! load-config with-test-env]]]
             [onyx.plugin 
              [s3-output]
+             [s3-input]
              [core-async :refer [take-segments! get-core-async-channels]]
              [s3-utils :as s]]
             [onyx.tasks.s3 :as task]
