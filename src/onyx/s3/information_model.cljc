@@ -66,12 +66,12 @@
    :lifecycle-entry
    {:onyx.plugin.s3-input/input
     {:model
-     [{:task.lifecycle/task :input
+     [{:task.lifecycle/name :input-lifecycles
        :lifecycle/calls :onyx.plugin.s3-input/s3-input-calls}]}
 
     :onyx.plugin.s3-output/output
     {:model
-     [{:task.lifecycle/task :output
+     [{:task.lifecycle/name :output-lifecycles
        :lifecycle/calls :onyx.plugin.s3-output/s3-output-calls}]}}
 
    :display-order
