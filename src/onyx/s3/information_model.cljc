@@ -8,6 +8,14 @@
              {:doc "A namespaced keyword pointing to a fully qualified function that will deserialize from bytes to segments. Currently only reading from newline separated values is supported, thus the serializer must deserialize line by line."
               :type :keyword}
 
+             :s3/access-key
+             {:doc "The Amazon S3 credentials key."
+              :type :string}
+
+             :s3/secret-key
+             {:doc "The Amazon S3 credentials secret."
+              :type :string}
+
              :s3/bucket 
              {:doc "The name of the s3 bucket to read objects from."
               :type :string}
@@ -20,6 +28,14 @@
     {:summary "An output task to write objects to an S3 bucket."
      :model {:s3/bucket 
              {:doc "The name of the s3 bucket to write to."
+              :type :string}
+
+             :s3/access-key
+             {:doc "The Amazon S3 credentials key."
+              :type :string}
+
+             :s3/secret-key
+             {:doc "The Amazon S3 credentials secret."
               :type :string}
 
              :s3/prefix 

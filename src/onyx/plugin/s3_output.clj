@@ -125,14 +125,15 @@
 
 (defn output [{:keys [onyx.core/task-map] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
-        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn 
+        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/access-key s3/secret-key
                 s3/content-type s3/endpoint s3/region s3/prefix s3/serialize-per-element?]} task-map
         encryption (or (:s3/encryption task-map) :none)
         _ (when (and region endpoint)
             (throw (ex-info "Cannot use both :s3/region and :s3/endpoint with the S3 output plugin."
                             task-map)))
-        ;; FIXME DOC REGION ENDPOINT
-        client (cond-> (s3/new-client)
+        client (cond-> (if access-key 
+                         (s3/new-client access-key secret-key)
+                         (s3/new-client))
                  endpoint (s3/set-endpoint endpoint)
                  region (s3/set-region region))
         transfer-manager (s3/transfer-manager client)

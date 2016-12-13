@@ -12,6 +12,8 @@
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
+   (s/optional-key :s3/access-key) s/Str
+   (s/optional-key :s3/secret-key) s/Str
    (s/optional-key :s3/serialize-per-element?) s/Bool
    (s/optional-key :s3/prefix) s/Str
    (s/optional-key :s3/endpoint) s/Str
@@ -46,6 +48,8 @@
   {:s3/deserializer-fn os/NamespacedKeyword
    :s3/bucket s/Str
    :s3/prefix s/Str
+   (s/optional-key :s3/access-key) s/Str
+   (s/optional-key :s3/secret-key) s/Str
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-input

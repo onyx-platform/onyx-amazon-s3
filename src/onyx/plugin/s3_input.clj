@@ -27,8 +27,7 @@
   (reset! readers nil))
 
 (defn close-read-s3-resources 
-  [{:keys [onyx.core/pipeline s3/shutdown?] :as event} lifecycle]
-  (reset! shutdown? true)
+  [{:keys [onyx.core/pipeline] :as event} lifecycle]
   (while (poll! (:retry-ch pipeline)))
   (close! (:retry-ch pipeline))
   (close-readers! (:readers pipeline))
@@ -206,7 +205,7 @@
         max-pending (arg-or-default :onyx/max-pending task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn]} task-map
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/access-key s3/secret-key]} task-map
         pending-messages (atom {})
         drained? (atom false)
         top-line-index (atom -1)
@@ -214,7 +213,9 @@
         pending-line-indices (atom #{})
         retry-ch (chan 1000000)
         commit-ch (chan (sliding-buffer 1))
-        client (s3/new-client)
+        client (if access-key 
+                 (s3/new-client access-key secret-key)
+                 (s3/new-client))
         deserializer-fn (kw->fn deserializer-fn)
         files (->> (s3/list-keys client bucket prefix)
                    (map (fn [file]
