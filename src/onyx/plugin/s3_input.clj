@@ -27,8 +27,7 @@
   (reset! readers nil))
 
 (defn close-read-s3-resources 
-  [{:keys [onyx.core/pipeline s3/shutdown?] :as event} lifecycle]
-  (reset! shutdown? true)
+  [{:keys [onyx.core/pipeline] :as event} lifecycle]
   (while (poll! (:retry-ch pipeline)))
   (close! (:retry-ch pipeline))
   (close-readers! (:readers pipeline))
