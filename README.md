@@ -71,14 +71,16 @@ There are four means of authentication available to you to let your job access t
 
 For example, starting up peers from the command line:
 
-```$ export AWS_ACCESS_KEY_ID=[Insert your access key]
+```
+$ export AWS_ACCESS_KEY_ID=[Insert your access key]
 $ export AWS_SECRET_KEY=[Your secret key]
 $ java -cp target/peer.jar myapp.core start-peers 5 -c resources/config.edn -p :default
 ```
 
 If you are deploying on Docker then use the `-e` flag to set envirnment variables when you run the container.
 
-```$ export AWS_ACCESS_KEY_ID=[Insert your access key]
+```
+$ export AWS_ACCESS_KEY_ID=[Insert your access key]
 $ export AWS_SECRET_KEY=[Your secret key]
 docker run --name myonyxjob -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_KEY=${AWS_SECRET_KEY} imagename:version
 ```
