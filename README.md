@@ -56,9 +56,35 @@ Lifecycle entry:
 |------------------------------|-----------|------------
 |`:s3/bucket`                  | `string`  | The name of the s3 bucket to write the file to
 |`:s3/serializer-fn`           | `keyword` | A keyword pointing to a fully qualified function that will serialize the batch of segments to bytes
-|`:s3/key-naming-fn`           | `keyword` | A keyword pointing to a fully qualified function that be supplied with the Onyx event map, and produce an s3 key for the batch.  
+|`:s3/key-naming-fn`           | `keyword` | A keyword pointing to a fully qualified function that be supplied with the Onyx event map, and produce an s3 key for the batch.
 |`:s3/content-type`            | `string`  | Optional content type for value
 |`:s3/encryption`              | `keyword` | Optional encryption setting. One of `:sse256` or `:none`.
+
+#### Amazon Authentication
+
+There are four means of authentication available to you to let your job access the AWS S3 bucket.
+
+* Envirnment Variables: Use `AWS_ACCESS_KEY_ID` and `AWS_SECRET_KEY`
+* Java System Properties: Use `aws.accessKeyId` and `aws.secretKey`
+* Default credentials file from `~/.aws/credentials` using the `[default]` profile.
+* Instance profile credentials through EC2 metadata service.
+
+For example, starting up peers from the command line:
+
+```
+$ export AWS_ACCESS_KEY_ID=[Insert your access key]
+$ export AWS_SECRET_KEY=[Your secret key]
+$ java -cp target/peer.jar myapp.core start-peers 5 -c resources/config.edn -p :default
+```
+
+If you are deploying on Docker then use the `-e` flag to set envirnment variables when you run the container.
+
+```
+$ export AWS_ACCESS_KEY_ID=[Insert your access key]
+$ export AWS_SECRET_KEY=[Your secret key]
+$ docker run --name myonyxjob -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_KEY=${AWS_SECRET_KEY} imagename:version
+```
+
 
 #### Acknowledgments
 
