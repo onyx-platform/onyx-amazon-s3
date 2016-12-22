@@ -82,7 +82,7 @@ If you are deploying on Docker then use the `-e` flag to set envirnment variable
 ```
 $ export AWS_ACCESS_KEY_ID=[Insert your access key]
 $ export AWS_SECRET_KEY=[Your secret key]
-docker run --name myonyxjob -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_KEY=${AWS_SECRET_KEY} imagename:version
+$ docker run --name myonyxjob -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_KEY=${AWS_SECRET_KEY} imagename:version
 ```
 
 
