@@ -10,6 +10,11 @@ In your project file:
 [org.onyxplatform/onyx-amazon-s3 "0.9.15.1-SNAPSHOT"]
 ```
 
+#### ABS TODO
+
+* Need some way to control batch sizes. batch-timeout is not supported in ABS currently
+* 
+
 #### Functions
 
 ##### Input Task

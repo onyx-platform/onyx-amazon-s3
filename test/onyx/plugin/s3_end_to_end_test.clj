@@ -10,7 +10,7 @@
              [core-async :refer [take-segments! get-core-async-channels]]
              [s3-utils :as s]]
             [onyx.tasks.s3 :as task]
-            [onyx.tasks [core-async :as ca]]
+            [onyx.tasks.core-async :as ca]
             [taoensso.timbre :as timbre :refer [debug info warn]])
   (:import [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream]
            [com.amazonaws.services.s3 AmazonS3Client]
@@ -18,9 +18,11 @@
            [com.amazonaws.services.s3.model ObjectMetadata]))
 
 (def in-chan (atom nil))
+(def in-buffer (atom nil))
 
 (defn inject-in-ch [event lifecycle]
-  {:core.async/chan @in-chan})
+  {:core.async/buffer in-buffer
+   :core.async/chan @in-chan})
 
 (def in-calls
   {:lifecycle/before-task-start inject-in-ch})
@@ -39,7 +41,6 @@
          :catalog [{:onyx/name :in
                     :onyx/plugin :onyx.plugin.core-async/input
                     :onyx/type :input
-                    :onyx/max-pending 10000
                     :onyx/medium :core.async
                     :onyx/batch-size batch-size
                     :onyx/max-peers 1
@@ -52,9 +53,7 @@
                    ;; Add :out task later
                    ]
          :lifecycles [{:lifecycle/task :in
-                       :lifecycle/calls ::in-calls}
-                      {:lifecycle/task :in
-                       :lifecycle/calls :onyx.plugin.core-async/reader-calls}]}
+                       :lifecycle/calls ::in-calls}]}
         (add-task (task/s3-output :out
                                   bucket
                                   ::serializer-fn
@@ -67,10 +66,11 @@
 
 (def crashed (atom false))
 
+;; TODO, use windowing to make sure recovery point is correct
 (defn crash-it [segment]
-  (when (and (zero? (rand-int 500))
-             (not @crashed))
-    (reset! crashed true)
+  (when (zero? (rand-int 500))
+    ;(not @crashed)
+    ;(reset! crashed true)
     (throw (Exception.)))
   segment)
 
@@ -89,10 +89,11 @@
                                   bucket
                                   prefix
                                   ::deserializer-fn
-                                  {:onyx/max-peers 1}))
+                                  {:onyx/fn ::crash-it
+                                   :onyx/max-peers 1}))
         (add-task (ca/output :out batch-settings 1000000)))))
 
-(deftest s3-output-test
+(deftest s3end-to-end-test
   (let [id (java.util.UUID/randomUUID)
         env-config {:onyx/tenancy-id id
                     :zookeeper/address "127.0.0.1:2188"
@@ -101,12 +102,7 @@
         peer-config {:onyx/tenancy-id id
                      :zookeeper/address "127.0.0.1:2188"
                      :onyx.peer/job-scheduler :onyx.job-scheduler/greedy
-                     :onyx.log/config {:appenders
-                                       {:println
-                                        {:min-level :trace
-                                         :enabled? true}}}
                      :onyx.messaging.aeron/embedded-driver? true
-                     :onyx.messaging/allow-short-circuit? false
                      :onyx.messaging/impl :aeron
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
@@ -122,14 +118,14 @@
     (try
       (with-test-env [test-env [3 env-config peer-config]]
         (let [batch-size 50
-              n-messages 20000
+              n-messages 2000
               _ (reset! in-chan (chan (inc n-messages)))
+              _ (reset! in-buffer {})
               input-messages (map (fn [v] {:n v
                                            :some-string1 "This is a string that I will increase the length of to test throughput"
                                            :some-string2 "This is a string that I will increase the length of to test throughput"}) 
                                   (range n-messages))]
           (run! #(>!! @in-chan %) input-messages)
-          (>!! @in-chan :done)
           (close! @in-chan)
           (let [output-job (build-s3-output-job bucket prefix 50000 2000)
                 input-job (build-s3-input-job bucket prefix 500 500)
@@ -138,7 +134,8 @@
                 input-job-id (:job-id (onyx.api/submit-job peer-config input-job))
                 _ (feedback-exception! peer-config input-job-id)
                 {:keys [out]} (get-core-async-channels input-job)]
-            (is (= (set (butlast (take-segments! out 5000)))
+            ;; TODO, test against window results
+            (is (= (set (take-segments! out 5000))
                    (set input-messages))))))
       (finally
        (let [ks (s/list-keys client bucket prefix)]
