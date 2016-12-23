@@ -27,7 +27,7 @@
 
 (def serializer-fn 
   (fn [vs] 
-    (.getBytes (str (pr-str vs) "\n") "UTF-8")))
+    (.getBytes (pr-str vs) "UTF-8")))
 
 (def deserializer-fn 
   clojure.edn/read-string)
@@ -141,7 +141,7 @@
             (is (= (set (butlast (take-segments! out 5000)))
                    (set input-messages))))))
       (finally
-       (let [ks (s/list-keys client bucket prefix)]
+       #_(let [ks (s/list-keys client bucket prefix)]
          (run! (fn [k]
                  (.deleteObject ^AmazonS3Client client ^String bucket ^String k))
                ks))))))
