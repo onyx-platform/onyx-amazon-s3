@@ -13,8 +13,10 @@
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]])
   (:import [com.amazonaws.event ProgressEventType]
+           [com.amazonaws.services.s3 AmazonS3Client]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.services.s3.transfer TransferManager Upload Transfer$TransferState]
+           [java.io ByteArrayOutputStream]
            [java.util TimeZone]
            [java.text SimpleDateFormat]))
 
@@ -33,7 +35,6 @@
                 (java.util.Date.))
        "_batch_"
        (:onyx.core/lifecycle-id event)))
-
 
 (defn build-ack-listener [fail-fn complete-fn peer-replica-view messenger acks]
   (let [start-time (System/currentTimeMillis)]
@@ -60,15 +61,25 @@
                 (trace "s3plugin: progress event." event-type)))))))
 
 (defn check-failures! [transfers]
-  (let [failed-uploads (filter (fn [upload]
-                                 (= (Transfer$TransferState/Failed)
-                                    (.getState upload)))
-                               (vals @transfers))]
-    (when-not (empty? failed-uploads)
-      (when-let [e (.waitForException (first failed-uploads))]
+  (let [failed-upload (first  
+                        (filter (fn [^Upload upload]
+                                  (= (Transfer$TransferState/Failed)
+                                     (.getState upload)))
+                                (vals @transfers)))]
+    (when failed-upload
+      (when-let [e (.waitForException ^Upload failed-upload)]
         (throw e)))))
 
-(defrecord S3Output [serializer-fn key-naming-fn content-type encryption transfer-manager transfers bucket]
+(defn serialize-per-element [serializer-fn elements]
+  (with-open [baos (ByteArrayOutputStream.)] 
+    (run! (fn [element]
+            (let [bs ^bytes (serializer-fn element)]
+              (.write baos bs 0 (alength bs))))
+          elements)
+    (.toByteArray baos)))
+
+(defrecord S3Output [serializer-fn prefix key-naming-fn content-type 
+                     encryption ^AmazonS3Client client ^TransferManager transfer-manager transfers bucket]
   p-ext/Pipeline
   (read-batch
     [_ event]
@@ -82,40 +93,53 @@
       (check-failures! transfers)
       (when-not (empty? segments)
         (let [serialized (serializer-fn segments)
-              file-name (key-naming-fn event)
+              file-name (str prefix (key-naming-fn event))
               fail-fn (fn [] (swap! transfers dissoc file-name))
               complete-fn (fn [] (swap! transfers dissoc file-name))
               event-listener (build-ack-listener fail-fn complete-fn peer-replica-view messenger acks)
               ;; Increment ack reference count because we are writing async
               _ (run! inc-count! (map second segments-acks))
               upload (s3/upload transfer-manager bucket file-name serialized content-type encryption event-listener)]
+              ;(s3/upload-synchronous client bucket file-name serialized)
               (swap! transfers assoc file-name upload)))
     {}))
 
   (seal-resource
     [_ event]))
 
-(defn after-task-stop [event lifecycle]
-  (.shutdownNow ^TransferManager (:s3/transfer-manager event)))
+(defn after-task-stop [{:keys [s3/transfer-manager] :as event} lifecycle]
+  (.shutdownNow ^TransferManager transfer-manager))
 
-(defn before-task-start [event lifecycle]
-  {:s3/transfer-manager (:transfer-manager (:onyx.core/pipeline event))})
+(defn before-task-start [{:keys [onyx.core/pipeline] :as event} lifecycle]
+  {:s3/transfer-manager (:transfer-manager pipeline)
+   :s3/client (:client pipeline)})
 
-(defn read-handle-exception [event lifecycle lf-kw exception]
+;; TODO, shouldn't reboot on validation errors
+(defn write-handle-exception [event lifecycle lf-kw exception]
   :restart)
 
 (def s3-output-calls
   {:lifecycle/before-task-start before-task-start
-   :lifecycle/handle-exception read-handle-exception
+   :lifecycle/handle-exception write-handle-exception
    :lifecycle/after-task-stop after-task-stop})
 
-(defn output [event]
-  (let [task-map (:onyx.core/task-map event)
-        _ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
-        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/content-type]} task-map
+(defn output [{:keys [onyx.core/task-map] :as event}]
+  (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
+        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn 
+                s3/content-type s3/endpoint s3/region s3/prefix s3/serialize-per-element?]} task-map
         encryption (or (:s3/encryption task-map) :none)
-        transfer-manager (s3/new-transfer-manager)
+        _ (when (and region endpoint)
+            (throw (ex-info "Cannot use both :s3/region and :s3/endpoint with the S3 output plugin."
+                            task-map)))
+        ;; FIXME DOC REGION ENDPOINT
+        client (cond-> (s3/new-client)
+                 endpoint (s3/set-endpoint endpoint)
+                 region (s3/set-region region))
+        transfer-manager (s3/transfer-manager client)
         transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
+        serializer-fn (if serialize-per-element? 
+                        (fn [segments] (serialize-per-element serializer-fn segments))
+                        serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
-    (->S3Output serializer-fn key-naming-fn content-type encryption transfer-manager transfers bucket)))
+    (->S3Output serializer-fn prefix key-naming-fn content-type encryption client transfer-manager transfers bucket)))
