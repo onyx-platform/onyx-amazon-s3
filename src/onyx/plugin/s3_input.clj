@@ -87,9 +87,8 @@
       {:s3/drained? (:drained pipeline)
        :s3/pending-messages (:pending-messages pipeline)})))
 
-;; TODO, shouldn't reboot on validation errors
 (defn read-handle-exception [event lifecycle lf-kw exception]
-  :restart)
+  :defer)
 
 (def s3-input-calls 
   {:lifecycle/before-task-start inject-read-seq-resources

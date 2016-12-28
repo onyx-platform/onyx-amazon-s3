@@ -115,9 +115,8 @@
   {:s3/transfer-manager (:transfer-manager pipeline)
    :s3/client (:client pipeline)})
 
-;; TODO, shouldn't reboot on validation errors
 (defn write-handle-exception [event lifecycle lf-kw exception]
-  :restart)
+  :defer)
 
 (def s3-output-calls
   {:lifecycle/before-task-start before-task-start
