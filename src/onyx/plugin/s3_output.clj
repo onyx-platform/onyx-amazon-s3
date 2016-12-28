@@ -70,19 +70,20 @@
       (when-let [e (.waitForException ^Upload failed-upload)]
         (throw e)))))
 
-(defn serialize-per-element [serializer-fn elements]
-  (with-open [baos (ByteArrayOutputStream.)] 
-    (run! (fn [element]
-            (let [bs ^bytes (serializer-fn element)]
-              (.write baos bs 0 (alength bs))))
-          elements)
-    (.toByteArray baos)))
+(defn serialize-per-element [serializer-fn separator elements]
+  (let [newline-bs (.getBytes separator)] 
+    (with-open [baos (ByteArrayOutputStream.)] 
+      (run! (fn [element]
+              (let [bs ^bytes (serializer-fn element)]
+                (.write baos bs 0 (alength bs))
+                (.write baos newline-bs 0 (alength newline-bs))))
+            elements)
+      (.toByteArray baos))))
 
 (defrecord S3Output [serializer-fn prefix key-naming-fn content-type 
                      encryption ^AmazonS3Client client ^TransferManager transfer-manager transfers bucket]
   p-ext/Pipeline
-  (read-batch
-    [_ event]
+  (read-batch [_ event]
     (function/read-batch event))
 
   (write-batch
@@ -139,8 +140,9 @@
         transfer-manager (s3/transfer-manager client)
         transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
+        separator (or (:s3/serialize-per-element-separator task-map) "\n")
         serializer-fn (if serialize-per-element? 
-                        (fn [segments] (serialize-per-element serializer-fn segments))
+                        (fn [segments] (serialize-per-element serializer-fn separator segments))
                         serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
     (->S3Output serializer-fn prefix key-naming-fn content-type encryption client transfer-manager transfers bucket)))

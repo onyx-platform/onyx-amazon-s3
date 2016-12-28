@@ -57,6 +57,12 @@
               :optional? true
               :type :boolean}
 
+             :s3/serialize-per-element-separator
+             {:doc "String to separate per element strings with. Defaults to newline charactor."
+              :default "\n"
+              :optional? true
+              :type :boolean}
+
              :s3/endpoint 
              {:doc "The S3 endpoint to write objects to."
               :optional? true
@@ -66,7 +72,6 @@
              {:doc "The S3 region to write objects to."
               :optional? true
               :type :string}
-
 
              :s3/content-type 
              {:doc "Optional content type for S3 object."
