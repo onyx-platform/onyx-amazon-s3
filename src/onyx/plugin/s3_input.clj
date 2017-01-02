@@ -9,12 +9,10 @@
             [onyx.tasks.s3 :refer [S3InputTaskMap]]
             [onyx.types :as t]
             [onyx.plugin.s3-utils :as s3]
-            [onyx.peer.operation :refer [kw->fn]]
-            ;[onyx.static.util :refer [kw->fn]]
+            [onyx.static.util :refer [kw->fn]]
             [onyx.plugin.protocols.plugin :as p]
             [onyx.plugin.protocols.input :as i]
             [onyx.plugin.protocols.output :as o]
-            [onyx.protocol.task-state :refer [advance get-event]]
             [schema.core :as s]
             [taoensso.timbre :refer [debug info fatal] :as timbre]) 
   (:import [java.io ByteArrayInputStream InputStreamReader BufferedReader]))
@@ -107,10 +105,11 @@
   (segment [this]
     segment)
 
-  ;; Rename synchronise? too?
-  (next-epoch [this epoch]
-    this)
+  (synced? [this epoch]
+    [true this])
 
+  (checkpointed! [this epoch]
+    [true this])
 
   (next-state [this state]
     (if-let [line (and buffered-reader (.readLine ^BufferedReader buffered-reader))]

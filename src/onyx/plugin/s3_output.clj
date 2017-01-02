@@ -1,20 +1,14 @@
 (ns onyx.plugin.s3-output
   (:require [onyx.extensions :as extensions]
             [onyx.schema :as os]
-            [onyx.peer.operation :refer [kw->fn]]
             [onyx.plugin.s3-utils :as s3]
-            ; [onyx.log.commands.peer-replica-view :refer [peer-site]]
-            ; [onyx.peer
-            ;  [function :as function]
-            ;  [pipeline-extensions :as p-ext]]
-            ;[onyx.static.util :refer [kw->fn]]
+            [onyx.static.util :refer [kw->fn]]
             [onyx.tasks.s3 :refer [S3OutputTaskMap]]
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]]
             [onyx.plugin.protocols.plugin :as p]
             [onyx.plugin.protocols.input :as i]
-            [onyx.plugin.protocols.output :as o]
-            [onyx.protocol.task-state :refer [advance get-event]])
+            [onyx.plugin.protocols.output :as o])
   (:import [com.amazonaws.event ProgressEventType]
            [com.amazonaws.services.s3 AmazonS3Client]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
@@ -24,7 +18,6 @@
            [java.text SimpleDateFormat]))
 
 ;;; before starting, add :onyx.core back in to everything
-
 ;; kw->fn
 ;; add input/output/plugin protocols
 ;; remove types dec-count inc-count
@@ -89,19 +82,18 @@
     this)
 
   o/Output
-  (synchronized? [this epoch]
+  (synced? [this epoch]
     (check-failures! transfers)
-    (empty? @transfers))
+    [(empty? @transfers) this])
 
-  (prepare-batch
-    [_ state]
-    ;; ADVANCE SHOULD BE NECESSARY IN PREPARE
-    state)
+  (checkpointed! [this epoch]
+    [true this])
 
-  (write-batch [_ state]
-    (let [{:keys [onyx.core/results] :as event} (get-event state)
-          ;; TODO: need to get rid of leafs
-          segments (map :message (mapcat :leaves (:tree results)))]
+  (prepare-batch [this _ _]
+    [true this])
+
+  (write-batch [this {:keys [onyx.core/results] :as event} replica _]
+    (let [segments (mapcat :leaves (:tree results))]
       (check-failures! transfers)
       (when-not (empty? segments)
         (let [serialized (serializer-fn segments)
@@ -112,7 +104,7 @@
               upload (s3/upload transfer-manager bucket file-name serialized
                                 content-type encryption event-listener)]
           (swap! transfers assoc file-name upload) ))
-      (advance state))))
+      [true this])))
 
 (defn after-task-stop [event lifecycle]
   {})
