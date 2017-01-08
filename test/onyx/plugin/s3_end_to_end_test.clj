@@ -65,12 +65,15 @@
                                    :onyx/batch-size output-batch-size})))))
 
 (def crashed (atom false))
+(def n-crashes (atom 0))
 
 ;; TODO, use windowing to make sure recovery point is correct
 (defn crash-it [segment]
-  (when (zero? (rand-int 500))
+  (when (and (zero? (rand-int 500))
+             (<= 10 @n-crashes))
     ;(not @crashed)
     ;(reset! crashed true)
+    (swap! n-crashes inc)
     (throw (Exception.)))
   segment)
 

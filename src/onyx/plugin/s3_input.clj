@@ -93,7 +93,7 @@
   (checkpoint [this]
     @files)
 
-  (recover [this replica-version checkpoint]
+  (recover! [this replica-version checkpoint]
     (reset! files 
             (if (or (nil? checkpoint) (= checkpoint :beginning)) 
               (->> (s3/list-keys client bucket prefix)
@@ -102,22 +102,18 @@
               checkpoint))
     this)
 
-  (segment [this]
-    segment)
-
   (synced? [this epoch]
-    [true this])
+    true)
 
   (checkpointed! [this epoch]
-    [true this])
+    true)
 
-  (next-state [this state]
+  (poll! [this state]
     (if-let [line (and buffered-reader (.readLine ^BufferedReader buffered-reader))]
-      (do (set! segment (deserializer-fn line))
-          this)
+      (deserializer-fn line)
       (do
-       (set! segment nil)
-       (-> this (close-reader) (next-reader)))))
+       (-> this (close-reader) (next-reader))
+       nil)))
 
   (completed? [this]
     (empty? @files)))

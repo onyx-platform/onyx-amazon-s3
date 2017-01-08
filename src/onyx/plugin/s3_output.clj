@@ -84,13 +84,12 @@
   o/Output
   (synced? [this epoch]
     (check-failures! transfers)
-    [(empty? @transfers) this])
+    (empty? @transfers))
 
-  (checkpointed! [this epoch]
-    [true this])
+  (checkpointed! [this epoch])
 
   (prepare-batch [this _ _]
-    [true this])
+    true)
 
   (write-batch [this {:keys [onyx.core/results] :as event} replica _]
     (let [segments (mapcat :leaves (:tree results))]
@@ -104,7 +103,7 @@
               upload (s3/upload transfer-manager bucket file-name serialized
                                 content-type encryption event-listener)]
           (swap! transfers assoc file-name upload) ))
-      [true this])))
+      true)))
 
 (defn after-task-stop [event lifecycle]
   {})
