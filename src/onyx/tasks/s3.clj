@@ -15,6 +15,7 @@
    (s/optional-key :s3/access-key) s/Str
    (s/optional-key :s3/secret-key) s/Str
    (s/optional-key :s3/serialize-per-element?) s/Bool
+   (s/optional-key :s3/serialize-per-element-separator) s/Str
    (s/optional-key :s3/prefix) s/Str
    (s/optional-key :s3/endpoint) s/Str
    (s/optional-key :s3/region) s/Str
@@ -31,6 +32,7 @@
                              :onyx/batch-size 10
                              :s3/encryption :none
                              :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
+                             :s3/serialize-per-element-separator "\n"
                              :onyx/doc "Writes segments to files in an S3 bucket."}
                             task-opts)
            :lifecycles [{:lifecycle/task task-name
