@@ -115,7 +115,7 @@
                        @files))
        (zero? (count (.buf retry-ch)))))
 
-(def n-bytes-buffer 10000000)
+(def n-bytes-buffer 100000000)
 
 (defn next-reader! [client bucket readers files]
   (if (nil? @readers)
