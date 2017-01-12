@@ -115,6 +115,8 @@
                        @files))
        (zero? (count (.buf retry-ch)))))
 
+(def n-bytes-buffer 10000000)
+
 (defn next-reader! [client bucket readers files]
   (if (nil? @readers)
     (if-let [f (->> @files
@@ -125,7 +127,7 @@
       (let [k (key f)
             object-input-stream (s3/s3-object-input-stream client bucket k 0)
             input-stream-reader (InputStreamReader. object-input-stream)
-            buffered-reader (BufferedReader. input-stream-reader)]
+            buffered-reader (BufferedReader. input-stream-reader n-bytes-buffer)]
         (dotimes [line (:top-index (val f))]
           ;; skip over fully acked segments
           (.readLine buffered-reader))
