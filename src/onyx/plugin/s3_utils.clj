@@ -29,7 +29,8 @@
 
 (defn upload [^TransferManager transfer-manager ^String bucket ^String key 
               ^bytes serialized ^String content-type 
-              encryption ^S3ProgressListener progress-listener]
+              encryption ;^S3ProgressListener progress-listener
+              ]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
         encryption-setting (case encryption 
@@ -49,7 +50,7 @@
                                        key
                                        (ByteArrayInputStream. serialized)
                                        metadata)
-        upload ^Upload (.upload transfer-manager put-request progress-listener)]
+        upload ^Upload (.upload transfer-manager put-request #_progress-listener)]
     upload))
 
 (defn upload-synchronous [^AmazonS3Client client ^String bucket ^String k ^bytes serialized]

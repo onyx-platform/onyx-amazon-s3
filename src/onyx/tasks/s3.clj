@@ -14,7 +14,6 @@
    :s3/key-naming-fn os/NamespacedKeyword
    (s/optional-key :s3/serialize-per-element?) s/Bool
    (s/optional-key :s3/prefix) s/Str
-   (s/optional-key :s3/endpoint) s/Str
    (s/optional-key :s3/region) s/Str
    (s/optional-key :s3/content-type) s/Str
    (s/optional-key :s3/encryption) Encryption

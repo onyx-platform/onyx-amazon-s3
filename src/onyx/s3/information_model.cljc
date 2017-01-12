@@ -41,11 +41,6 @@
               :optional? true
               :type :boolean}
 
-             :s3/endpoint 
-             {:doc "The S3 endpoint to write objects to."
-              :optional? true
-              :type :string}
-
              :s3/region 
              {:doc "The S3 region to write objects to."
               :optional? true
@@ -79,4 +74,4 @@
     [:s3/deserializer-fn :s3/bucket :s3/prefix]
 
     :onyx.plugin.s3-output/output
-    [:s3/serializer-fn :s3/prefix :s3/region :s3/encryption :s3/content-type :s3/serialize-per-element? :s3/key-naming-fn :s3/endpoint :s3/bucket]}})
+    [:s3/serializer-fn :s3/prefix :s3/region :s3/encryption :s3/content-type :s3/serialize-per-element? :s3/key-naming-fn :s3/bucket]}})

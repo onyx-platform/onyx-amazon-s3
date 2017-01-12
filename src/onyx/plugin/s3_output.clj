@@ -17,16 +17,6 @@
            [java.util TimeZone]
            [java.text SimpleDateFormat]))
 
-;;; before starting, add :onyx.core back in to everything
-;; kw->fn
-;; add input/output/plugin protocols
-;; remove types dec-count inc-count
-;; remove :onyx/max-pending
-;; remove :onyx/pending-timeout
-;; move :onyx.core -> :xxx
-;; remove test core async reader calls $ ag reader-calls
-;; Add test core async buffers
-
 (defn default-naming-fn [event]
   (str (.format (doto (SimpleDateFormat. "yyyy-MM-dd-hh.mm.ss.SSS")
                   (.setTimeZone (TimeZone/getTimeZone "UTC")))
@@ -34,33 +24,14 @@
        "_batch_"
        (:onyx.core/lifecycle-id event)))
 
-(defn build-ack-listener [fail-fn complete-fn]
-  (let [start-time (System/currentTimeMillis)]
-    (reify S3ProgressListener
-      (progressChanged [this progressEvent]
-        (let [event-type (.getEventType progressEvent)] 
-          (cond (= event-type (ProgressEventType/CLIENT_REQUEST_FAILED_EVENT))
-                (info "Client request failed" event-type)
-                (= event-type (ProgressEventType/TRANSFER_FAILED_EVENT))
-                (do
-                 (info "Transfer failed." event-type)
-                 (fail-fn))
-                (= event-type (ProgressEventType/TRANSFER_COMPLETED_EVENT))
-                (do
-                 (complete-fn)
-                 (info "s3plugin: progress complete." event-type "took" (- (System/currentTimeMillis) start-time)))
-                :else
-                (trace "s3plugin: progress event." event-type)))))))
-
 (defn check-failures! [transfers]
-  (let [failed-upload (first  
-                        (filter (fn [^Upload upload]
-                                  (= (Transfer$TransferState/Failed)
-                                     (.getState upload)))
-                                (vals @transfers)))]
-    (when failed-upload
-      (when-let [e (.waitForException ^Upload failed-upload)]
-        (throw e)))))
+  (doseq [[k upload] @transfers]
+    (cond (= (Transfer$TransferState/Failed) (.getState ^Upload upload))
+          (when-let [e (.waitForException ^Upload upload)]
+            (throw e))
+
+          (= (Transfer$TransferState/Completed) (.getState ^Upload upload))
+          (swap! transfers dissoc k))))
 
 (defn serialize-per-element [serializer-fn elements]
   (with-open [baos (ByteArrayOutputStream.)] 
@@ -97,12 +68,8 @@
       (when-not (empty? segments)
         (let [serialized (serializer-fn segments)
               file-name (str prefix (key-naming-fn event))
-              fail-fn (fn [] (swap! transfers dissoc file-name))
-              complete-fn (fn [] (swap! transfers dissoc file-name))
-              event-listener (build-ack-listener fail-fn complete-fn)
-              upload (s3/upload transfer-manager bucket file-name serialized
-                                content-type encryption event-listener)]
-          (swap! transfers assoc file-name upload) ))
+              upload (s3/upload transfer-manager bucket file-name serialized content-type encryption)]
+          (swap! transfers assoc file-name upload)))
       true)))
 
 (defn after-task-stop [event lifecycle]
@@ -123,14 +90,9 @@
 (defn output [{:keys [onyx.core/task-map] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
         {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn 
-                s3/content-type s3/endpoint s3/region s3/prefix s3/serialize-per-element?]} task-map
+                s3/content-type s3/region s3/prefix s3/serialize-per-element?]} task-map
         encryption (or (:s3/encryption task-map) :none)
-        _ (when (and region endpoint)
-            (throw (ex-info "Cannot use both :s3/region and :s3/endpoint with the S3 output plugin."
-                            task-map)))
-        ;; FIXME DOC REGION ENDPOINT
         client (cond-> (s3/new-client)
-                 endpoint (s3/set-endpoint endpoint)
                  region (s3/set-region region))
         transfer-manager (s3/transfer-manager client)
         transfers (atom {})

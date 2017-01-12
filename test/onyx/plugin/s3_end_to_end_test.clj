@@ -111,9 +111,7 @@
                      :onyx.messaging/bind-addr "localhost"}
         encryption :aes256
         region "us-east-1"
-        endpoint nil
         client (cond-> (s/new-client)
-                 endpoint (s/set-endpoint endpoint)
                  region (s/set-region region))
         bucket (str "s3-plugin-test-onyx")
         prefix (str (java.util.UUID/randomUUID) "/")
