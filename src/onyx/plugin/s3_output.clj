@@ -63,8 +63,8 @@
     true)
 
   (write-batch [this {:keys [onyx.core/results] :as event} replica _]
+    (check-failures! transfers)
     (let [segments (mapcat :leaves (:tree results))]
-      (check-failures! transfers)
       (when-not (empty? segments)
         (let [serialized (serializer-fn segments)
               file-name (str prefix (key-naming-fn event))
