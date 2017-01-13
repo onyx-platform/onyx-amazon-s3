@@ -115,7 +115,7 @@
                        @files))
        (zero? (count (.buf retry-ch)))))
 
-(def n-bytes-buffer 10000000)
+(def n-bytes-buffer 50000000)
 
 (defn next-reader! [client bucket readers files]
   (if (nil? @readers)
@@ -143,13 +143,12 @@
    top-line-index top-acked-line-index pending-line-indices commit-ch retry-ch
    deserializer-fn client bucket files readers]
   p-ext/Pipeline
-  (write-batch 
-    [this event]
+  (write-batch [this event]
     (function/write-batch event))
 
   (read-batch 
     [_ event]
-    (let [pending (count (keys @pending-messages))
+    (let [pending (count @pending-messages)
           max-segments (min (- max-pending pending) batch-size)
           tbatch (transient [])
           _ (take-values! tbatch retry-ch max-segments)
@@ -159,8 +158,7 @@
                   (if-let [line (.readLine ^BufferedReader buffered-reader)]
                     (do 
                      (conj! tbatch 
-                            (-> (t/input (java.util.UUID/randomUUID) 
-                                         (deserializer-fn line))
+                            (-> (t/input (random-uuid) (deserializer-fn line))
                                 (assoc :k k)
                                 (assoc :line-number (get-in (swap! files update-in [k :top-index] inc) [k :top-index]))))  
                      (recur))
@@ -168,7 +166,7 @@
                      (swap! files assoc-in [k :fully-read?] true)
                      (close-readers! readers)))))
               (when-not @drained? 
-                (conj! tbatch (t/input (java.util.UUID/randomUUID) :done))))
+                (conj! tbatch (t/input (random-uuid) :done))))
           batch (persistent! tbatch)]
       (doseq [m batch]
         (when-not (= :done (:message m)) 
@@ -206,7 +204,7 @@
         max-pending (arg-or-default :onyx/max-pending task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/access-key s3/secret-key]} task-map
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/access-key s3/secret-key s3/region]} task-map
         pending-messages (atom {})
         drained? (atom false)
         top-line-index (atom -1)
@@ -214,9 +212,10 @@
         pending-line-indices (atom #{})
         retry-ch (chan 1000000)
         commit-ch (chan (sliding-buffer 1))
-        client (if access-key 
-                 (s3/new-client access-key secret-key)
-                 (s3/new-client))
+        client (cond-> (if access-key 
+                         (s3/new-client access-key secret-key)
+                         (s3/new-client))
+                 region (s3/set-region region))
         deserializer-fn (kw->fn deserializer-fn)
         files (->> (s3/list-keys client bucket prefix)
                    (map (fn [file]
