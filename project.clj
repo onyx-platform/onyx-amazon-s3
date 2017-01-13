@@ -16,6 +16,7 @@
                  [org.onyxplatform/onyx "0.10.0-technical-preview-4"]
                  [com.amazonaws/aws-java-sdk-s3 "1.11.58"]]
   :global-vars  {*warn-on-reflection* true}
+  :jvm-opts ["-Xmx2500M"]
   :profiles {:circle-ci {:jvm-opts ["-Xmx2500M"
                                     "-XX:+UnlockCommercialFeatures"
                                     "-XX:+FlightRecorder"

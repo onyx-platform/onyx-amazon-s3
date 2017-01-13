@@ -12,6 +12,11 @@
              {:doc "The name of the s3 bucket to read objects from."
               :type :string}
 
+             :s3/buffer-size-bytes
+             {:doc "Size of the buffer to read the S3 object into."
+              :default 10000000
+              :type :integer}
+
              :s3/prefix 
              {:doc "Filter the keys to be read by a supplied prefix."
               :type :string}}}

@@ -5,7 +5,7 @@
            [com.amazonaws.event ProgressListener$ExceptionReporter]
            [com.amazonaws.services.s3.transfer TransferManager Upload]
            [com.amazonaws.services.s3 AmazonS3Client]
-           [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
+           [com.amazonaws.services.s3.model S3Object S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
            [java.io ByteArrayInputStream InputStreamReader BufferedReader]
@@ -70,6 +70,13 @@
             (.setRange object-request start-range))
         object (.getObject client object-request)]
     (.getObjectContent object)))
+
+(defn s3-object ^S3Object
+  [^AmazonS3Client client ^String bucket ^String k & [start-range]]
+  (let [object-request (GetObjectRequest. bucket k)
+        _ (when start-range
+            (.setRange object-request start-range))]
+    (.getObject client object-request)))
 
 (defn list-keys [^AmazonS3Client client ^String bucket ^String prefix]
   (loop [listing (.listObjects client bucket prefix) ks []]
