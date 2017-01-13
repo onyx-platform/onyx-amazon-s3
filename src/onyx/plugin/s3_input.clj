@@ -117,14 +117,15 @@
                        @files))
        (zero? (count (.buf retry-ch)))))
 
-(defn next-reader! [client buffer-size bucket readers files]
+(defn next-reader! [client buffer-size bucket readers files-val]
   (if (nil? @readers)
-    (if-let [f (->> @files
+    (if-let [f (->> files-val
                     (remove (fn [[k v]]
                               (:fully-read? v)))
                     (sort-by (comp :top-index val))
                     last)]
       (let [k (key f)
+            _ (assert k ["Attempted read of nil key, current files:" files-val])
             object (s3/s3-object client bucket k 0)
             object-input-stream (.getObjectContent object)
             object-length (.getContentLength (.getObjectMetadata object))
@@ -154,7 +155,7 @@
           max-segments (min (- max-pending pending) batch-size)
           tbatch (transient [])
           _ (take-values! tbatch retry-ch max-segments)
-          _ (if-let [{:keys [k buffered-reader line-number]} (next-reader! client buffer-size bucket readers files)] 
+          _ (if-let [{:keys [k buffered-reader line-number]} (next-reader! client buffer-size bucket readers @files)] 
               (loop []
                 (when (<= (count tbatch) max-segments)
                   (if-let [line (.readLine ^BufferedReader buffered-reader)]
