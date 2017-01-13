@@ -115,9 +115,7 @@
                        @files))
        (zero? (count (.buf retry-ch)))))
 
-(def n-bytes-buffer 50000000)
-
-(defn next-reader! [client bucket readers files]
+(defn next-reader! [client buffer-size bucket readers files]
   (if (nil? @readers)
     (if-let [f (->> @files
                     (remove (fn [[k v]]
@@ -125,9 +123,11 @@
                     (sort-by (comp :top-index val))
                     last)]
       (let [k (key f)
-            object-input-stream (s3/s3-object-input-stream client bucket k 0)
+            object (s3/s3-object client bucket k 0)
+            object-input-stream (.getObjectContent object)
+            object-length (.getContentLength (.getObjectMetadata object))
             input-stream-reader (InputStreamReader. object-input-stream)
-            buffered-reader (BufferedReader. input-stream-reader n-bytes-buffer)]
+            buffered-reader (BufferedReader. input-stream-reader (or buffer-size object-length))]
         (dotimes [line (:top-index (val f))]
           ;; skip over fully acked segments
           (.readLine buffered-reader))
@@ -139,7 +139,7 @@
   @readers)
 
 (defrecord S3Input 
-  [log task-id max-pending batch-size batch-timeout pending-messages drained? 
+  [log task-id max-pending batch-size batch-timeout buffer-size pending-messages drained? 
    top-line-index top-acked-line-index pending-line-indices commit-ch retry-ch
    deserializer-fn client bucket files readers]
   p-ext/Pipeline
@@ -152,7 +152,7 @@
           max-segments (min (- max-pending pending) batch-size)
           tbatch (transient [])
           _ (take-values! tbatch retry-ch max-segments)
-          _ (if-let [{:keys [k buffered-reader line-number]} (next-reader! client bucket readers files)] 
+          _ (if-let [{:keys [k buffered-reader line-number]} (next-reader! client buffer-size bucket readers files)] 
               (loop []
                 (when (<= (count tbatch) max-segments)
                   (if-let [line (.readLine ^BufferedReader buffered-reader)]
@@ -204,7 +204,8 @@
         max-pending (arg-or-default :onyx/max-pending task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/access-key s3/secret-key s3/region]} task-map
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/access-key 
+                s3/secret-key s3/region s3/buffer-size-bytes]} task-map
         pending-messages (atom {})
         drained? (atom false)
         top-line-index (atom -1)
@@ -223,6 +224,6 @@
                                  :top-index -1
                                  :max-acked-index -1}}))
                    (into {}))] 
-    (->S3Input log task-id max-pending batch-size batch-timeout pending-messages drained? 
+    (->S3Input log task-id max-pending batch-size batch-timeout buffer-size-bytes pending-messages drained? 
                top-line-index top-acked-line-index pending-line-indices commit-ch retry-ch
                deserializer-fn client bucket (atom files) (atom nil))))

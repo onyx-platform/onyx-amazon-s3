@@ -16,9 +16,18 @@
              {:doc "The Amazon S3 credentials secret."
               :type :string}
 
+             :s3/region 
+             {:doc "The S3 region endpoint to use."
+              :optional? true
+              :type :string}
+
              :s3/bucket 
              {:doc "The name of the s3 bucket to read objects from."
               :type :string}
+
+             :s3/buffer-size-bytes
+             {:doc "Size of the buffer to read the S3 object into."
+              :type :integer}
 
              :s3/prefix 
              {:doc "Filter the keys to be read by a supplied prefix."
@@ -69,7 +78,7 @@
               :type :string}
 
              :s3/region 
-             {:doc "The S3 region to write objects to."
+             {:doc "The S3 region endpoint to use (bucket will still determine the location of your data)."
               :optional? true
               :type :string}
 

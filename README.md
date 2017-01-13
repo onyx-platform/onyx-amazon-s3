@@ -32,6 +32,7 @@ Catalog entry:
  :s3/bucket "mybucket"
  :s3/prefix "filter-prefix/example/"
  :s3/deserializer-fn :my.ns/deserializer-fn
+ :s3/buffer-size-bytes 10000000
  :onyx/doc "Reads segments from keys in an S3 bucket."}
 ```
 

@@ -89,7 +89,8 @@
                                   bucket
                                   prefix
                                   ::deserializer-fn
-                                  {:onyx/max-peers 1}))
+                                  {:s3/buffer-size-bytes 100000000
+                                   :onyx/max-peers 1}))
         (add-task (ca/output :out batch-settings 1000000)))))
 
 (deftest s3-output-test
