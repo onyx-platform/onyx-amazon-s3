@@ -228,6 +228,6 @@
                                  :top-index -1
                                  :max-acked-index -1}}))
                    (into {}))] 
-    (->S3Input log task-id max-pending batch-size batch-timeout buffer-size-bytes pending-messages drained? 
+    (->S3Input log task-id max-pending batch-size batch-timeout buffer-size-bytes* pending-messages drained? 
                top-line-index top-acked-line-index pending-line-indices commit-ch retry-ch
                deserializer-fn client bucket (atom files) (atom nil))))
