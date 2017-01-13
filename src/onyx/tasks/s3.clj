@@ -45,6 +45,7 @@
   {:s3/deserializer-fn os/NamespacedKeyword
    :s3/bucket s/Str
    :s3/prefix s/Str
+   (s/optional-key :s3/region) s/Str
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-input

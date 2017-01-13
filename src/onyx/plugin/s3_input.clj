@@ -122,8 +122,9 @@
   (let [_ (s/validate (os/UniqueTaskMap S3InputTaskMap) task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn]} task-map
-        client (s3/new-client)
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region]} task-map
+        client (cond-> (s3/new-client)
+                 region (s3/set-region region))
         deserializer-fn (kw->fn deserializer-fn)] 
     (->S3Input task-id batch-size batch-timeout deserializer-fn client 
                bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))
