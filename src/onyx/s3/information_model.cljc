@@ -27,6 +27,7 @@
 
              :s3/buffer-size-bytes
              {:doc "Size of the buffer to read the S3 object into."
+              :default 10000000
               :type :integer}
 
              :s3/prefix 

@@ -11,8 +11,10 @@
             [onyx.plugin.s3-utils :as s3]
             [onyx.static.util :refer [kw->fn]]
             [schema.core :as s]
+            [onyx.s3.information-model :as model]
             [taoensso.timbre :refer [debug info fatal] :as timbre]) 
   (:import [java.io ByteArrayInputStream InputStreamReader BufferedReader]))
+
 
 (defn input-drained? [pending-messages batch]
   (and (= 1 (count @pending-messages))
@@ -127,7 +129,7 @@
             object-input-stream (.getObjectContent object)
             object-length (.getContentLength (.getObjectMetadata object))
             input-stream-reader (InputStreamReader. object-input-stream)
-            buffered-reader (BufferedReader. input-stream-reader (or buffer-size object-length))]
+            buffered-reader (BufferedReader. input-stream-reader (min buffer-size object-length))]
         (dotimes [line (:top-index (val f))]
           ;; skip over fully acked segments
           (.readLine buffered-reader))
@@ -206,6 +208,8 @@
         batch-size (:onyx/batch-size task-map)
         {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/access-key 
                 s3/secret-key s3/region s3/buffer-size-bytes]} task-map
+        model (-> model/model :catalog-entry :onyx.plugin.s3-input/input :model)
+        buffer-size-bytes* (or buffer-size-bytes (:default (:s3/buffer-size-bytes model)))
         pending-messages (atom {})
         drained? (atom false)
         top-line-index (atom -1)
