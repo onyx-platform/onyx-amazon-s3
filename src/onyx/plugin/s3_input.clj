@@ -13,8 +13,8 @@
             [schema.core :as s]
             [onyx.s3.information-model :as model]
             [taoensso.timbre :refer [debug info fatal] :as timbre]) 
-  (:import [java.io ByteArrayInputStream InputStreamReader BufferedReader]))
-
+  (:import [java.io ByteArrayInputStream InputStreamReader BufferedReader]
+           [java.util.concurrent.locks LockSupport]))
 
 (defn input-drained? [pending-messages batch]
   (and (= 1 (count @pending-messages))
@@ -177,6 +177,8 @@
         (swap! pending-messages assoc (:id m) m)) 
       (when (completed? files batch pending-messages retry-ch)
         (reset! drained? true))
+      (when (all-done? batch)
+        (LockSupport/parkNanos 200000000))
       {:onyx.core/batch batch}))
 
   (seal-resource [this event])
