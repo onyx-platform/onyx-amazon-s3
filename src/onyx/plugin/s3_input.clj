@@ -185,9 +185,14 @@
 
   p-ext/PipelineInput
   (ack-segment [_ _ segment-id]
-    (let [m (@pending-messages segment-id)]
-      (swap! files update-in [(:k m) :pending-indices] disj (:line-number m))
-      (swap! pending-messages dissoc segment-id)))
+    (when-let [m (@pending-messages segment-id)]
+      (swap! pending-messages dissoc segment-id)
+      (swap! files 
+             (fn [fs]
+               (let [k (:k m)] 
+                 (if-let [f (get fs k)]
+                   (assoc fs (:k m) (update f :pending-indices disj (:line-number m))) 
+                   fs))))))
 
   (retry-segment 
     [_ event segment-id]
