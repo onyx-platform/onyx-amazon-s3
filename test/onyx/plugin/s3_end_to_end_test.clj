@@ -90,6 +90,7 @@
                                   prefix
                                   ::deserializer-fn
                                   {:s3/buffer-size-bytes 10000000000
+                                   :s3/force-content-encoding "utf-8"
                                    :onyx/max-peers 1}))
         (add-task (ca/output :out batch-settings 1000000)))))
 

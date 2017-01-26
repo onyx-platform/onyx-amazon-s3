@@ -50,6 +50,7 @@ Lifecycle entry:
 |`:s3/bucket`                  | `string`  | The name of the s3 bucket to read objects from.
 |`:s3/deserializer-fn`         | `keyword` | A namespaced keyword pointing to a fully qualified function that will deserialize from bytes to segments. Currently only reading from newline separated values is supported, thus the serializer must deserialize line by line.
 |`:s3/prefix`                  | `string`  | Filter the keys to be read by a supplied prefix.
+|`:s3/force-content-encoding`  | `string`  | The content encoding to use to read the s3 object. This should only be used if the content encoding metadata for the key is incorrect, or unset and the object is not utf-8 encoded. By default the reader will use the content type set for the object, before falling back to utf-8.
 
 
 ##### Output Task

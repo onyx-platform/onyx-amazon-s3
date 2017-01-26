@@ -117,7 +117,7 @@
                        @files))
        (zero? (count (.buf retry-ch)))))
 
-(defn next-reader! [client buffer-size bucket readers files-val]
+(defn next-reader! [client buffer-size bucket readers content-encoding files-val]
   (if (nil? @readers)
     (if-let [f (->> files-val
                     (remove (fn [[k v]]
@@ -128,8 +128,12 @@
             _ (assert k ["Attempted read of nil key, current files:" files-val])
             object (s3/s3-object client bucket k 0)
             object-input-stream (.getObjectContent object)
-            object-length (.getContentLength (.getObjectMetadata object))
-            input-stream-reader (InputStreamReader. object-input-stream)
+            object-metadata (.getObjectMetadata object)
+            content-encoding (or content-encoding (.getContentEncoding object-metadata))
+            object-length (.getContentLength object-metadata)
+            input-stream-reader (if content-encoding 
+                                  (InputStreamReader. object-input-stream content-encoding)
+                                  (InputStreamReader. object-input-stream))
             buffered-reader (BufferedReader. input-stream-reader (min buffer-size object-length))]
         (dotimes [line (:top-index (val f))]
           ;; skip over fully acked segments
@@ -144,7 +148,7 @@
 (defrecord S3Input 
   [log task-id max-pending batch-size batch-timeout buffer-size pending-messages drained? 
    top-line-index top-acked-line-index pending-line-indices commit-ch retry-ch
-   deserializer-fn client bucket files readers]
+   deserializer-fn client bucket content-encoding files readers]
   p-ext/Pipeline
   (write-batch [this event]
     (function/write-batch event))
@@ -155,7 +159,7 @@
           max-segments (min (- max-pending pending) batch-size)
           tbatch (transient [])
           _ (take-values! tbatch retry-ch max-segments)
-          _ (if-let [{:keys [k buffered-reader line-number]} (next-reader! client buffer-size bucket readers @files)] 
+          _ (if-let [{:keys [k buffered-reader line-number]} (next-reader! client buffer-size bucket readers content-encoding @files)] 
               (loop []
                 (when (<= (count tbatch) max-segments)
                   (if-let [line (.readLine ^BufferedReader buffered-reader)]
@@ -225,6 +229,7 @@
         pending-line-indices (atom #{})
         retry-ch (chan 1000000)
         commit-ch (chan (sliding-buffer 1))
+        content-encoding (:s3/force-content-encoding task-map)
         client (cond-> (if access-key 
                          (s3/new-client access-key secret-key)
                          (s3/new-client))
@@ -238,4 +243,4 @@
                    (into {}))] 
     (->S3Input log task-id max-pending batch-size batch-timeout buffer-size-bytes* pending-messages drained? 
                top-line-index top-acked-line-index pending-line-indices commit-ch retry-ch
-               deserializer-fn client bucket (atom files) (atom nil))))
+               deserializer-fn client bucket content-encoding (atom files) (atom nil))))

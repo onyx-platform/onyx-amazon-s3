@@ -50,6 +50,7 @@
   {:s3/deserializer-fn os/NamespacedKeyword
    :s3/bucket s/Str
    :s3/prefix s/Str
+   (s/optional-key :s3/force-content-encoding) s/Str
    (s/optional-key :s3/buffer-size-bytes) s/Int
    (s/optional-key :s3/region) s/Str
    (s/optional-key :s3/access-key) s/Str
