@@ -57,7 +57,13 @@
     (check-failures! transfers)
     (empty? @transfers))
 
+
+  (recover! [this replica-version checkpoint]
+    this)
+
   (checkpointed! [this epoch])
+
+  (checkpoint [this])
 
   (prepare-batch [this _ _]
     true)

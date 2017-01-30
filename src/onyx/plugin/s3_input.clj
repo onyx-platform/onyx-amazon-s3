@@ -1,6 +1,5 @@
 (ns onyx.plugin.s3-input
-  (:require [onyx.peer.function :as function]
-            [clojure.core.async :refer [chan >! >!! <!! close! go thread timeout alts!! poll!  go-loop sliding-buffer]]
+  (:require [clojure.core.async :refer [chan >! >!! <!! close! go thread timeout alts!! poll!  go-loop sliding-buffer]]
             [onyx.static.default-vals :refer [arg-or-default]]
             [onyx.schema :as os]
             [onyx.static.uuid :refer [random-uuid]]
