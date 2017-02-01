@@ -12,7 +12,10 @@
   {:s3/bucket s/Str
    :s3/serializer-fn os/NamespacedKeyword
    :s3/key-naming-fn os/NamespacedKeyword
+   (s/optional-key :s3/access-key) s/Str
+   (s/optional-key :s3/secret-key) s/Str
    (s/optional-key :s3/serialize-per-element?) s/Bool
+   (s/optional-key :s3/serialize-per-element-separator) s/Str
    (s/optional-key :s3/prefix) s/Str
    (s/optional-key :s3/region) s/Str
    (s/optional-key :s3/content-type) s/Str
@@ -28,6 +31,7 @@
                              :onyx/batch-size 10
                              :s3/encryption :none
                              :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
+                             :s3/serialize-per-element-separator "\n"
                              :onyx/doc "Writes segments to files in an S3 bucket."}
                             task-opts)
            :lifecycles [{:lifecycle/task task-name
@@ -45,7 +49,11 @@
   {:s3/deserializer-fn os/NamespacedKeyword
    :s3/bucket s/Str
    :s3/prefix s/Str
+   (s/optional-key :s3/force-content-encoding) s/Str
+   (s/optional-key :s3/buffer-size-bytes) s/Int
    (s/optional-key :s3/region) s/Str
+   (s/optional-key :s3/access-key) s/Str
+   (s/optional-key :s3/secret-key) s/Str
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-input

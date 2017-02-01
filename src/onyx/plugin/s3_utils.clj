@@ -1,5 +1,5 @@
 (ns onyx.plugin.s3-utils
-  (:import [com.amazonaws.auth DefaultAWSCredentialsProviderChain]
+  (:import [com.amazonaws.auth DefaultAWSCredentialsProviderChain BasicAWSCredentials]
            [com.amazonaws.handlers AsyncHandler]
            [com.amazonaws.regions RegionUtils]
            [com.amazonaws.event ProgressListener$ExceptionReporter]
@@ -12,9 +12,13 @@
            [org.apache.commons.codec.digest DigestUtils]
            [org.apache.commons.codec.binary Base64]))
 
-(defn new-client ^AmazonS3Client []
-  (let [credentials (DefaultAWSCredentialsProviderChain.)]
-    (AmazonS3Client. credentials)))
+(defn new-client ^AmazonS3Client 
+  ([access-key secret-key]
+   (let [credentials (BasicAWSCredentials. access-key secret-key)]
+     (AmazonS3Client. credentials)))
+  ([]
+   (let [credentials (DefaultAWSCredentialsProviderChain.)]
+     (AmazonS3Client. credentials))))
 
 (defn set-endpoint [^AmazonS3Client client ^String endpoint]
   (doto client

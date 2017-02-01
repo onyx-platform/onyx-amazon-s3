@@ -33,13 +33,15 @@
           (= (Transfer$TransferState/Completed) (.getState ^Upload upload))
           (swap! transfers dissoc k))))
 
-(defn serialize-per-element [serializer-fn elements]
-  (with-open [baos (ByteArrayOutputStream.)] 
-    (run! (fn [element]
-            (let [bs ^bytes (serializer-fn element)]
-              (.write baos bs 0 (alength bs))))
-          elements)
-    (.toByteArray baos)))
+(defn serialize-per-element [serializer-fn separator elements]
+  (let [newline-bs (.getBytes separator)] 
+    (with-open [baos (ByteArrayOutputStream.)] 
+      (run! (fn [element]
+              (let [bs ^bytes (serializer-fn element)]
+                (.write baos bs 0 (alength bs))
+                (.write baos newline-bs 0 (alength newline-bs))))
+            elements)
+      (.toByteArray baos))))
 
 (deftype S3Output [serializer-fn prefix key-naming-fn content-type 
                    encryption ^AmazonS3Client client ^TransferManager transfer-manager 
@@ -95,16 +97,19 @@
 
 (defn output [{:keys [onyx.core/task-map] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
-        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn 
+        {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/access-key s3/secret-key
                 s3/content-type s3/region s3/prefix s3/serialize-per-element?]} task-map
         encryption (or (:s3/encryption task-map) :none)
-        client (cond-> (s3/new-client)
+        client (cond-> (if access-key 
+                         (s3/new-client access-key secret-key)
+                         (s3/new-client))
                  region (s3/set-region region))
         transfer-manager (s3/transfer-manager client)
         transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
+        separator (or (:s3/serialize-per-element-separator task-map) "\n")
         serializer-fn (if serialize-per-element? 
-                        (fn [segments] (serialize-per-element serializer-fn segments))
+                        (fn [segments] (serialize-per-element serializer-fn separator segments))
                         serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
     (->S3Output serializer-fn prefix key-naming-fn content-type 

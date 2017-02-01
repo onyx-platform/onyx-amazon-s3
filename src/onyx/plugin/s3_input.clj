@@ -47,7 +47,7 @@
   (close-reader [this]))
 
 (deftype S3Input 
-  [task-id batch-size batch-timeout buffer-size-bytes deserializer-fn client bucket prefix files
+  [task-id batch-size batch-timeout content-encoding buffer-size-bytes deserializer-fn client bucket prefix files
    readers ^:unsynchronized-mutable s3-key ^:unsynchronized-mutable input-stream
    ^:unsynchronized-mutable input-stream-reader ^:unsynchronized-mutable buffered-reader
    ^:unsynchronized-mutable segment]
@@ -65,8 +65,12 @@
       (let [k (key f)
             object (s3/s3-object client bucket k 0)
             object-input-stream* (.getObjectContent object)
-            object-length (.getContentLength (.getObjectMetadata object))
-            input-stream-reader* (InputStreamReader. object-input-stream*)
+            object-metadata (.getObjectMetadata object)
+            content-encoding (or content-encoding (.getContentEncoding object-metadata))
+            object-length (.getContentLength object-metadata)
+            input-stream-reader* (if content-encoding 
+                                   (InputStreamReader. object-input-stream* content-encoding)
+                                   (InputStreamReader. object-input-stream*))
             buffered-reader* (BufferedReader. input-stream-reader* (min buffer-size-bytes object-length))]
         (dotimes [line (val f)]
           ;; skip over fully acked segments
@@ -88,7 +92,6 @@
       (set! input-stream-reader nil)
       (set! input-stream nil)
     this)
-
 
   i/Input
   (checkpoint [this]
@@ -123,11 +126,13 @@
   (let [_ (s/validate (os/UniqueTaskMap S3InputTaskMap) task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region s3/buffer-size-bytes]} task-map
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region s3/buffer-size-bytes s3/content-encoding s3/access-key s3/secret-key]} task-map
         model (-> model/model :catalog-entry :onyx.plugin.s3-input/input :model)
         buffer-size-bytes* (or buffer-size-bytes (:default (:s3/buffer-size-bytes model)))
-        client (cond-> (s3/new-client)
+        client (cond-> (if access-key 
+                         (s3/new-client access-key secret-key)
+                         (s3/new-client))
                  region (s3/set-region region))
         deserializer-fn (kw->fn deserializer-fn)] 
-    (->S3Input task-id batch-size batch-timeout buffer-size-bytes* deserializer-fn client 
+    (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes* deserializer-fn client 
                bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))
