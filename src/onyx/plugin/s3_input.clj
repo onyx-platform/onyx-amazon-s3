@@ -114,7 +114,8 @@
 
   (poll! [this state]
     (if-let [line (and buffered-reader (.readLine ^BufferedReader buffered-reader))]
-      (deserializer-fn line)
+      {:s3-key s3-key
+       :line (deserializer-fn line)}
       (do
        (-> this (close-reader) (next-reader))
        nil)))

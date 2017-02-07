@@ -90,10 +90,3 @@
       (if (.isTruncated listing)
         (recur (.listObjects client bucket prefix) new-ks)
         new-ks))))
-
- 
-;; ONLY DO ONE FILE AT A TIME
-;; THEN TRACK COUNTS, ONLY ALLOW NEXT FILE TO START AFTER PREVIOUS FILE HAS BEEN FULLY ACKED
-;; THEN YOU'LL BE ABLE TO RESUME BY DROPPING UNTIL THAT FILE, THEN SEEKING IN THAT FILE
-;; ALSO RECORD THE BUFFER OFFSET
-;; 
