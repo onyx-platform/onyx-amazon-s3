@@ -86,9 +86,8 @@
 (defn before-task-start [event lifecycle]
   {})
 
-;; TODO, shouldn't reboot on validation errors
 (defn write-handle-exception [event lifecycle lf-kw exception]
-  :restart)
+  :defer)
 
 (def s3-output-calls
   {:lifecycle/before-task-start before-task-start

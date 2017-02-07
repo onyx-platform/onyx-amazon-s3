@@ -33,9 +33,8 @@
     (throw (ex-info "s3 input tasks must currently use :onyx/max-peers 1" task-map)))
   {})
 
-;; TODO, shouldn't reboot on validation errors
 (defn read-handle-exception [event lifecycle lf-kw exception]
-  :restart)
+  :defer)
 
 (def s3-input-calls 
   {:lifecycle/before-task-start inject-read-s3-resources
@@ -123,9 +122,9 @@
   (completed? [this]
     (empty? @files)))
 
-(defn build-extraction-fn [include-key?]
-  (if include-key?
-    (fn [m {:keys [s3-key]}] (assoc m :s3-key s3-key))
+(defn build-extraction-fn [file-key]
+  (if file-key
+    (fn [m {:keys [s3-key]}] (assoc m file-key s3-key))
     (fn [m more] m)))
 
 (defn input [{:keys [onyx.core/log onyx.core/task-id onyx.core/task-map] :as event}]
@@ -134,7 +133,7 @@
         batch-size (:onyx/batch-size task-map)
         {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region
                 s3/buffer-size-bytes s3/content-encoding s3/access-key
-                s3/secret-key s3/include-key?]} task-map
+                s3/secret-key s3/file-key]} task-map
         model (-> model/model :catalog-entry :onyx.plugin.s3-input/input :model)
         buffer-size-bytes* (or buffer-size-bytes (:default (:s3/buffer-size-bytes model)))
         client (cond-> (if access-key 
@@ -142,6 +141,6 @@
                          (s3/new-client))
                  region (s3/set-region region))
         deserializer-fn (kw->fn deserializer-fn)
-        extraction-fn (build-extraction-fn include-key?)]
+        extraction-fn (build-extraction-fn file-key)]
     (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes* deserializer-fn
                extraction-fn client bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))
