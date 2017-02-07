@@ -31,7 +31,7 @@
   (fn [vs] 
     (.getBytes (str (pr-str vs) "\n") "UTF-8")))
 
-(def deserializer-fn 
+(def deserializer-fn
   clojure.edn/read-string)
 
 (defn build-s3-output-job [bucket prefix output-batch-size output-batch-timeout]

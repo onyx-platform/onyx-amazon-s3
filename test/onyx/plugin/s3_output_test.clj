@@ -118,5 +118,3 @@
                   (.deleteObject client bucket k))
                 ks)
           (.deleteBucket client bucket))))))
-
-;; (run-tests)
