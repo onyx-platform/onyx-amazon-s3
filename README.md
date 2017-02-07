@@ -37,6 +37,7 @@ Catalog entry:
  :s3/bucket "mybucket"
  :s3/prefix "filter-prefix/example/"
  :s3/deserializer-fn :my.ns/deserializer-fn
+ :s3/include-key? false
  :onyx/doc "Reads segments from keys in an S3 bucket."}
 ```
 
@@ -54,6 +55,7 @@ Lifecycle entry:
 |`:s3/bucket`                  | `string`  | The name of the s3 bucket to read objects from.
 |`:s3/deserializer-fn`         | `keyword` | A namespaced keyword pointing to a fully qualified function that will deserialize from bytes to segments. Currently only reading from newline separated values is supported, thus the serializer must deserialize line by line.
 |`:s3/prefix`                  | `string`  | Filter the keys to be read by a supplied prefix.
+|`:s3/include-key?`            | `boolean` | When true, includes the S3 key of file from which the segment's line was read. `false` by default.
 
 
 ##### Output Task
@@ -119,6 +121,6 @@ Pull requests into the master branch are welcomed.
 
 #### License
 
-Copyright © 2016 Distributed Masonry LLC
+Copyright © 2017 Distributed Masonry LLC
 
 Distributed under the Eclipse Public License, the same as Clojure.

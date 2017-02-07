@@ -30,8 +30,8 @@
 (def serializer-fn (fn [vs] 
                      (.getBytes (pr-str vs) "UTF-8")))
 
-(def deserializer-fn (fn [{:keys [line]}]
-                       (clojure.edn/read-string line)))
+(def deserializer-fn (fn [s]
+                       (clojure.edn/read-string s)))
 
 (defn read-object [^AmazonS3Client client ^String bucket ^String k]
   (let [object (.getObject client bucket k)

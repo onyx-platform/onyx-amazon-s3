@@ -19,7 +19,12 @@
 
              :s3/prefix 
              {:doc "Filter the keys to be read by a supplied prefix."
-              :type :string}}}
+              :type :string}
+
+             :s3/include-key?
+             {:doc "When true, includes the S3 key of file from which the segment's line was read."
+              :type :string
+              :default false}}}
 
     :onyx.plugin.s3-output/output
     {:summary "An output task to write objects to an S3 bucket."

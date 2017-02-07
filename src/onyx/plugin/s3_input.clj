@@ -47,10 +47,11 @@
   (close-reader [this]))
 
 (deftype S3Input 
-  [task-id batch-size batch-timeout content-encoding buffer-size-bytes deserializer-fn client bucket prefix files
-   readers ^:unsynchronized-mutable s3-key ^:unsynchronized-mutable input-stream
-   ^:unsynchronized-mutable input-stream-reader ^:unsynchronized-mutable buffered-reader
-   ^:unsynchronized-mutable segment]
+    [task-id batch-size batch-timeout content-encoding buffer-size-bytes
+     deserializer-fn extraction-fn client bucket prefix files
+     readers ^:unsynchronized-mutable s3-key ^:unsynchronized-mutable input-stream
+     ^:unsynchronized-mutable input-stream-reader ^:unsynchronized-mutable buffered-reader
+     ^:unsynchronized-mutable segment]
 
   p/Plugin
   (start [this event]
@@ -87,10 +88,10 @@
       (.close ^InputStreamReader input-stream-reader)
       (.close ^com.amazonaws.services.s3.model.S3ObjectInputStream input-stream)
       (swap! files dissoc s3-key))
-      (set! s3-key nil)
-      (set! buffered-reader nil)
-      (set! input-stream-reader nil)
-      (set! input-stream nil)
+    (set! s3-key nil)
+    (set! buffered-reader nil)
+    (set! input-stream-reader nil)
+    (set! input-stream nil)
     this)
 
   i/Input
@@ -114,26 +115,33 @@
 
   (poll! [this state]
     (if-let [line (and buffered-reader (.readLine ^BufferedReader buffered-reader))]
-      {:s3-key s3-key
-       :line (deserializer-fn line)}
+      (extraction-fn (deserializer-fn line) {:s3-key s3-key})
       (do
-       (-> this (close-reader) (next-reader))
-       nil)))
+        (-> this (close-reader) (next-reader))
+        nil)))
 
   (completed? [this]
     (empty? @files)))
+
+(defn build-extraction-fn [include-key?]
+  (if include-key?
+    (fn [m {:keys [s3-key]}] (assoc m :s3-key s3-key))
+    (fn [m more] m)))
 
 (defn input [{:keys [onyx.core/log onyx.core/task-id onyx.core/task-map] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3InputTaskMap) task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region s3/buffer-size-bytes s3/content-encoding s3/access-key s3/secret-key]} task-map
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region
+                s3/buffer-size-bytes s3/content-encoding s3/access-key
+                s3/secret-key s3/include-key?]} task-map
         model (-> model/model :catalog-entry :onyx.plugin.s3-input/input :model)
         buffer-size-bytes* (or buffer-size-bytes (:default (:s3/buffer-size-bytes model)))
         client (cond-> (if access-key 
                          (s3/new-client access-key secret-key)
                          (s3/new-client))
                  region (s3/set-region region))
-        deserializer-fn (kw->fn deserializer-fn)] 
-    (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes* deserializer-fn client 
-               bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))
+        deserializer-fn (kw->fn deserializer-fn)
+        extraction-fn (build-extraction-fn include-key?)]
+    (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes* deserializer-fn
+               extraction-fn client bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))
