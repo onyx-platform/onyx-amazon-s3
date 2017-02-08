@@ -1,20 +1,24 @@
 (ns onyx.plugin.s3-utils
-  (:import [com.amazonaws.auth DefaultAWSCredentialsProviderChain]
+  (:import [com.amazonaws.auth DefaultAWSCredentialsProviderChain BasicAWSCredentials]
            [com.amazonaws.handlers AsyncHandler]
            [com.amazonaws.regions RegionUtils]
            [com.amazonaws.event ProgressListener$ExceptionReporter]
            [com.amazonaws.services.s3.transfer TransferManager Upload]
            [com.amazonaws.services.s3 AmazonS3Client]
-           [com.amazonaws.services.s3.model S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
+           [com.amazonaws.services.s3.model S3Object S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
            [java.io ByteArrayInputStream InputStreamReader BufferedReader]
            [org.apache.commons.codec.digest DigestUtils]
            [org.apache.commons.codec.binary Base64]))
 
-(defn new-client ^AmazonS3Client []
-  (let [credentials (DefaultAWSCredentialsProviderChain.)]
-    (AmazonS3Client. credentials)))
+(defn new-client ^AmazonS3Client 
+  ([access-key secret-key]
+   (let [credentials (BasicAWSCredentials. access-key secret-key)]
+     (AmazonS3Client. credentials)))
+  ([]
+   (let [credentials (DefaultAWSCredentialsProviderChain.)]
+     (AmazonS3Client. credentials))))
 
 (defn set-endpoint [^AmazonS3Client client ^String endpoint]
   (doto client
@@ -28,8 +32,7 @@
   (TransferManager. client))
 
 (defn upload [^TransferManager transfer-manager ^String bucket ^String key 
-              ^bytes serialized ^String content-type 
-              encryption ^S3ProgressListener progress-listener]
+              ^bytes serialized ^String content-type encryption]
   (let [size (alength serialized)
         md5 (String. (Base64/encodeBase64 (DigestUtils/md5 serialized)))
         encryption-setting (case encryption 
@@ -49,7 +52,7 @@
                                        key
                                        (ByteArrayInputStream. serialized)
                                        metadata)
-        upload ^Upload (.upload transfer-manager put-request progress-listener)]
+        upload ^Upload (.upload transfer-manager put-request)]
     upload))
 
 (defn upload-synchronous [^AmazonS3Client client ^String bucket ^String k ^bytes serialized]
@@ -64,13 +67,19 @@
                 (ByteArrayInputStream. serialized)
                 metadata)))
 
-(defn s3-object-input-stream ^S3ObjectInputStream
+(defn s3-object ^S3Object
   [^AmazonS3Client client ^String bucket ^String k & [start-range]]
   (let [object-request (GetObjectRequest. bucket k)
         _ (when start-range
-            (.setRange object-request start-range))
-        object (.getObject client object-request)]
-    (.getObjectContent object)))
+            (.setRange object-request start-range))]
+    (.getObject client object-request)))
+
+(defn s3-object ^S3Object
+  [^AmazonS3Client client ^String bucket ^String k & [start-range]]
+  (let [object-request (GetObjectRequest. bucket k)
+        _ (when start-range
+            (.setRange object-request start-range))]
+    (.getObject client object-request)))
 
 (defn list-keys [^AmazonS3Client client ^String bucket ^String prefix]
   (loop [listing (.listObjects client bucket prefix) ks []]
@@ -80,15 +89,3 @@
       (if (.isTruncated listing)
         (recur (.listObjects client bucket prefix) new-ks)
         new-ks))))
-
- 
- ; (rest 
- ;  (drop-while #(not= "2016-11-21-02.36.22.218_batch_4dbcfabd-1cd0-d6dd-28cb-d18e1b92ad29" %) 
- ;              (list-keys (new-client) "s3-plugin-test-05bbc495-cf56-4e7e-acb8-67a78e536e9d" ""))) 
-
-
-;; ONLY DO ONE FILE AT A TIME
-;; THEN TRACK COUNTS, ONLY ALLOW NEXT FILE TO START AFTER PREVIOUS FILE HAS BEEN FULLY ACKED
-;; THEN YOU'LL BE ABLE TO RESUME BY DROPPING UNTIL THAT FILE, THEN SEEKING IN THAT FILE
-;; ALSO RECORD THE BUFFER OFFSET
-;; 

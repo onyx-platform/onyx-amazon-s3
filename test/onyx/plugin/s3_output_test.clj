@@ -18,9 +18,11 @@
            [com.amazonaws.services.s3.model ObjectMetadata]))
 
 (def in-chan (atom nil))
+(def in-buffer (atom nil))
 
 (defn inject-in-ch [event lifecycle]
-  {:core.async/chan @in-chan})
+  {:core.async/buffer in-buffer
+   :core.async/chan @in-chan})
 
 (def in-calls
   {:lifecycle/before-task-start inject-in-ch})
@@ -57,10 +59,10 @@
         peer-config {:onyx/tenancy-id id
                      :zookeeper/address "127.0.0.1:2188"
                      :onyx.peer/job-scheduler :onyx.job-scheduler/greedy
-                     :onyx.log/config {:appenders
-                                       {:println
-                                        {:min-level :trace
-                                         :enabled? true}}}
+                     ; :onyx.log/config {:appenders
+                     ;                   {:println
+                     ;                    {:min-level :info
+                     ;                     :enabled? true}}}
                      :onyx.messaging.aeron/embedded-driver? true
                      :onyx.messaging/allow-short-circuit? false
                      :onyx.messaging/impl :aeron
@@ -72,14 +74,12 @@
     (try
       (with-test-env [test-env [3 env-config peer-config]]
         (let [batch-size 50
-              n-messages 20000
+              n-messages 200
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
                                   :onyx/plugin :onyx.plugin.core-async/input
                                   :onyx/type :input
-                                  ;; Allow all messages to be in flight at one time for testing purposes
-                                  :onyx/max-pending n-messages
                                   :onyx/medium :core.async
                                   :onyx/batch-size batch-size
                                   :onyx/max-peers 1
@@ -92,9 +92,7 @@
                                  ;; Add :out task later
                                  ]
                        :lifecycles [{:lifecycle/task :in
-                                     :lifecycle/calls ::in-calls}
-                                    {:lifecycle/task :in
-                                     :lifecycle/calls :onyx.plugin.core-async/reader-calls}]}
+                                     :lifecycle/calls ::in-calls}]}
                       (add-task (task/s3-output :out
                                                 bucket
                                                 ::serializer-fn
@@ -103,23 +101,20 @@
                                                  :onyx/batch-timeout 2000
                                                  :onyx/batch-size 2000})))
               _ (reset! in-chan (chan (inc n-messages)))
+              _ (reset! in-buffer {})
               input-messages (map (fn [v] {:n v
                                            :some-string1 "This is a string that I will increase the length of to test throughput"
                                            :some-string2 "This is a string that I will increase the length of to test throughput"}) 
                                   (range n-messages))]
           (run! #(>!! @in-chan %) input-messages)
-          (>!! @in-chan :done)
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
                 results (sort-by :n (retrieve-s3-results (s/new-client) bucket))]
-            (is (= results input-messages)))))
+            (is (= input-messages results)))))
       (finally
         (let [ks (get-bucket-keys client bucket)]
           (run! (fn [k]
                   (.deleteObject client bucket k))
                 ks)
           (.deleteBucket client bucket))))))
-
-
-;; (run-tests)
