@@ -25,11 +25,6 @@
              {:doc "The name of the s3 bucket to read objects from."
               :type :string}
 
-             :s3/force-content-encoding
-             {:doc "The content encoding to use to read the s3 object. This should only be used if the content encoding metadata for the key is incorrect, or unset and the object is not utf-8 encoded. By default the reader will use the content type set for the object, before falling back to utf-8."
-              :type :string
-              :optional? true}
-
              :s3/buffer-size-bytes
              {:doc "Size of the buffer to read the S3 object into."
               :default 10000000
@@ -37,7 +32,12 @@
 
              :s3/prefix 
              {:doc "Filter the keys to be read by a supplied prefix."
-              :type :string}}}
+              :type :string}
+
+             :s3/file-key
+             {:doc "When set, includes the S3 key of file from which the segment's line was read under this key."
+              :type :string
+              :optional? true}}}
 
     :onyx.plugin.s3-output/output
     {:summary "An output task to write objects to an S3 bucket."
@@ -72,17 +72,6 @@
               :optional? true
               :type :boolean}
 
-             :s3/serialize-per-element-separator
-             {:doc "String to separate per element strings with. Defaults to newline charactor."
-              :default "\n"
-              :optional? true
-              :type :boolean}
-
-             :s3/endpoint 
-             {:doc "The S3 endpoint to write objects to."
-              :optional? true
-              :type :string}
-
              :s3/region 
              {:doc "The S3 region endpoint to use (bucket will still determine the location of your data)."
               :optional? true
@@ -115,4 +104,4 @@
     [:s3/deserializer-fn :s3/bucket :s3/prefix :s3/force-content-encoding]
 
     :onyx.plugin.s3-output/output
-    [:s3/serializer-fn :s3/prefix :s3/region :s3/encryption :s3/content-type :s3/serialize-per-element? :s3/key-naming-fn :s3/endpoint :s3/bucket]}})
+    [:s3/serializer-fn :s3/prefix :s3/region :s3/encryption :s3/content-type :s3/serialize-per-element? :s3/key-naming-fn :s3/bucket]}})

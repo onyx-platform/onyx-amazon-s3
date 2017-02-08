@@ -7,8 +7,13 @@ Onyx plugin for Amazon S3.
 In your project file:
 
 ```clojure
-[org.onyxplatform/onyx-amazon-s3 "0.9.15.1-SNAPSHOT"]
+[org.onyxplatform/onyx-amazon-s3 "0.10.0.0-technical-preview-4"]
 ```
+
+#### ABS TODO
+
+* Need some way to control batch sizes. batch-timeout is not supported in ABS currently
+* 
 
 #### Functions
 
@@ -50,8 +55,7 @@ Lifecycle entry:
 |`:s3/bucket`                  | `string`  | The name of the s3 bucket to read objects from.
 |`:s3/deserializer-fn`         | `keyword` | A namespaced keyword pointing to a fully qualified function that will deserialize from bytes to segments. Currently only reading from newline separated values is supported, thus the serializer must deserialize line by line.
 |`:s3/prefix`                  | `string`  | Filter the keys to be read by a supplied prefix.
-|`:s3/force-content-encoding`  | `string`  | The content encoding to use to read the s3 object. This should only be used if the content encoding metadata for the key is incorrect, or unset and the object is not utf-8 encoded. By default the reader will use the content type set for the object, before falling back to utf-8.
-
+|`:s3/file-key`                | `string`  | When set, includes the S3 key of file from which the segment's line was read under this key.
 
 ##### Output Task
 
@@ -124,6 +128,6 @@ Pull requests into the master branch are welcomed.
 
 #### License
 
-Copyright © 2016 Distributed Masonry LLC
+Copyright © 2017 Distributed Masonry LLC
 
 Distributed under the Eclipse Public License, the same as Clojure.
