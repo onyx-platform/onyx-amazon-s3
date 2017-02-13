@@ -49,7 +49,7 @@
 
 (deftype S3Input 
     [task-id batch-size batch-timeout content-encoding buffer-size-bytes
-     deserializer-fn extraction-fn client bucket prefix files
+     deserializer-fn extraction-fn client bucket prefix files-filter files
      readers ^:unsynchronized-mutable s3-key ^:unsynchronized-mutable input-stream
      ^:unsynchronized-mutable input-stream-reader ^:unsynchronized-mutable buffered-reader
      ^:unsynchronized-mutable segment]
@@ -99,11 +99,12 @@
   (checkpoint [this]
     @files)
 
-  (recover! [this replica-version checkpoint]
+  (recover! [{:keys [files-filter] :as this} replica-version checkpoint]
     (reset! files 
             (if (or (nil? checkpoint) (= checkpoint :beginning)) 
               (->> (s3/list-keys client bucket prefix)
                    (map (fn [file] {file -1}))
+                   (filter (or files-filter identity))
                    (into {}))
               checkpoint))
     this)
@@ -135,7 +136,7 @@
         batch-size (:onyx/batch-size task-map)
         {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region
                 s3/buffer-size-bytes s3/content-encoding s3/access-key
-                s3/secret-key s3/file-key]} task-map
+                s3/secret-key s3/file-key s3/files-filter]} task-map
         model (-> model/model :catalog-entry :onyx.plugin.s3-input/input :model)
         buffer-size-bytes* (or buffer-size-bytes (:default (:s3/buffer-size-bytes model)))
         client (cond-> (if access-key 
@@ -145,4 +146,4 @@
         deserializer-fn (kw->fn deserializer-fn)
         extraction-fn (build-extraction-fn file-key)]
     (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes* deserializer-fn
-               extraction-fn client bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))
+               extraction-fn client bucket prefix files-filter (atom nil) (atom nil) nil nil nil nil nil)))
