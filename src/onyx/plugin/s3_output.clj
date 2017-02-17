@@ -67,7 +67,7 @@
 
   (checkpoint [this])
 
-  (prepare-batch [this _ _]
+  (prepare-batch [this _ _ _]
     true)
 
   (write-batch [this {:keys [onyx.core/results] :as event} replica _]
