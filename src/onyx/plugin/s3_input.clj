@@ -8,9 +8,7 @@
             [onyx.types :as t]
             [onyx.plugin.s3-utils :as s3]
             [onyx.static.util :refer [kw->fn]]
-            [onyx.plugin.protocols.plugin :as p]
-            [onyx.plugin.protocols.input :as i]
-            [onyx.plugin.protocols.output :as o]
+            [onyx.plugin.protocols :as p]
             [onyx.s3.information-model :as model]
             [schema.core :as s]
             [onyx.s3.information-model :as model]
@@ -95,10 +93,9 @@
     (set! input-stream nil)
     this)
 
-  i/Input
+  p/Checkpointed
   (checkpoint [this]
     @files)
-
   (recover! [this replica-version checkpoint]
     (reset! files 
             (if (or (nil? checkpoint) (= checkpoint :beginning)) 
@@ -107,22 +104,22 @@
                    (into {}))
               checkpoint))
     this)
-
-  (synced? [this epoch]
-    true)
-
   (checkpointed! [this epoch]
     true)
 
+  p/BarrierSynchronization
+  (synced? [this epoch]
+    true)
+  (completed? [this]
+    (empty? @files))
+
+  p/Input
   (poll! [this state]
     (if-let [line (and buffered-reader (.readLine ^BufferedReader buffered-reader))]
       (extraction-fn (deserializer-fn line) {:s3-key s3-key})
       (do
         (-> this (close-reader) (next-reader))
-        nil)))
-
-  (completed? [this]
-    (empty? @files)))
+        nil))))
 
 (defn build-extraction-fn [file-key]
   (if file-key
