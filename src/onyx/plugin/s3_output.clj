@@ -6,9 +6,7 @@
             [onyx.tasks.s3 :refer [S3OutputTaskMap]]
             [schema.core :as s]
             [taoensso.timbre :as timbre :refer [error warn info trace]]
-            [onyx.plugin.protocols.plugin :as p]
-            [onyx.plugin.protocols.input :as i]
-            [onyx.plugin.protocols.output :as o])
+            [onyx.plugin.protocols :as p])
   (:import [com.amazonaws.event ProgressEventType]
            [com.amazonaws.services.s3 AmazonS3Client]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
@@ -43,6 +41,10 @@
             elements)
       (.toByteArray baos))))
 
+(defn completed? [transfers]
+  (check-failures! transfers)
+  (empty? @transfers))
+
 (deftype S3Output [serializer-fn prefix key-naming-fn content-type 
                    encryption ^AmazonS3Client client ^TransferManager transfer-manager 
                    transfers bucket]
@@ -54,19 +56,18 @@
     (.shutdownNow ^TransferManager transfer-manager)
     this)
 
-  o/Output
+  p/BarrierSynchronization
   (synced? [this epoch]
-    (check-failures! transfers)
-    (empty? @transfers))
-
-
+    (completed? transfers))
+  (completed? [this]
+    (completed? transfers))
+  p/Checkpointed
   (recover! [this replica-version checkpoint]
     this)
-
   (checkpointed! [this epoch])
-
   (checkpoint [this])
 
+  p/Output
   (prepare-batch [this _ _ _]
     true)
 
