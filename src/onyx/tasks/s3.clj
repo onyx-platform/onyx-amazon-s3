@@ -18,6 +18,7 @@
    (s/optional-key :s3/serialize-per-element-separator) s/Str
    (s/optional-key :s3/prefix) s/Str
    (s/optional-key :s3/region) s/Str
+   (s/optional-key :s3/endpoint-url) s/Str
    (s/optional-key :s3/content-type) s/Str
    (s/optional-key :s3/encryption) Encryption
    (os/restricted-ns :s3) s/Any})
@@ -52,6 +53,7 @@
    (s/optional-key :s3/force-content-encoding) s/Str
    (s/optional-key :s3/buffer-size-bytes) s/Int
    (s/optional-key :s3/region) s/Str
+   (s/optional-key :s3/endpoint-url) s/Str
    (s/optional-key :s3/access-key) s/Str
    (s/optional-key :s3/secret-key) s/Str
    (s/optional-key :s3/file-key) s/Str

@@ -21,6 +21,11 @@
               :optional? true
               :type :string}
 
+             :s3/endpoint-url
+             {:doc "The S3 endpoint URL to use."
+              :optional? true
+              :type :string}
+
              :s3/bucket 
              {:doc "The name of the s3 bucket to read objects from."
               :type :string}
@@ -66,7 +71,6 @@
              {:doc "A namespaced keyword pointing to a fully qualified function that be supplied with the Onyx event map, and produce an s3 key for the batch."
               :type :keyword}
 
-
              :s3/serialize-per-element? 
              {:doc "Flag for whether to serialize as an entire batch, or serialize per element and separate by newline characters."
               :optional? true
@@ -74,6 +78,11 @@
 
              :s3/region 
              {:doc "The S3 region endpoint to use (bucket will still determine the location of your data)."
+              :optional? true
+              :type :string}
+
+             :s3/endpoint-url
+             {:doc "The S3 endpoint URL to use."
               :optional? true
               :type :string}
 
@@ -104,4 +113,4 @@
     [:s3/deserializer-fn :s3/bucket :s3/prefix :s3/force-content-encoding]
 
     :onyx.plugin.s3-output/output
-    [:s3/serializer-fn :s3/prefix :s3/region :s3/encryption :s3/content-type :s3/serialize-per-element? :s3/key-naming-fn :s3/bucket]}})
+    [:s3/serializer-fn :s3/prefix :s3/region :s3/endpoint-url :s3/encryption :s3/content-type :s3/serialize-per-element? :s3/key-naming-fn :s3/bucket]}})

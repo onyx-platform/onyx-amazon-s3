@@ -110,9 +110,7 @@
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
         encryption :aes256
-        region "us-east-1"
-        client (cond-> (s/new-client)
-                 region (s/set-region region))
+        client (s/new-client :region "us-east-1")
         bucket (str "s3-plugin-test-onyx")
         prefix (str (java.util.UUID/randomUUID) "/")
         _ (.createBucket ^AmazonS3Client client ^String bucket)]
