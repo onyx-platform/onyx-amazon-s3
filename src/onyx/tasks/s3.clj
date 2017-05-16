@@ -67,6 +67,7 @@
                              :onyx/medium :s3
                              :onyx/batch-size 20
                              :onyx/max-peers 1
+                             :s3/buffer-size-bytes 10000000
                              :onyx/doc "Reads segments from keys in an S3 bucket."}
                             task-opts)
            :lifecycles [{:lifecycle/task task-name
