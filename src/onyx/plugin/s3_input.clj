@@ -67,7 +67,7 @@
             content-encoding (or content-encoding (.getContentEncoding object-metadata))
             object-length (.getContentLength object-metadata)
             input-stream-reader* (if content-encoding 
-                                   (InputStreamReader. object-input-stream* content-encoding)
+                                   (InputStreamReader. object-input-stream* ^String content-encoding)
                                    (InputStreamReader. object-input-stream*))
             buffered-reader* (BufferedReader. input-stream-reader* (min buffer-size-bytes object-length))]
         (dotimes [line (val f)]

@@ -16,9 +16,9 @@
 (defn new-client ^AmazonS3Client
 [& {:keys [access-key secret-key region endpoint-url]}]
   (if-let [builder (cond-> (AmazonS3ClientBuilder/standard)
-                           access-key (.withCredentials (AWSStaticCredentialsProvider. (BasicAWSCredentials. access-key secret-key)))
-                           region (.withRegion region)
-                           endpoint-url (.withEndpointConfiguration (AwsClientBuilder$EndpointConfiguration. endpoint-url region)))]
+                           access-key ^AmazonS3ClientBuilder (.withCredentials (AWSStaticCredentialsProvider. (BasicAWSCredentials. access-key secret-key)))
+                           region ^AmazonS3ClientBuilder (.withRegion ^String region)
+                           endpoint-url ^AmazonS3ClientBuilder (.withEndpointConfiguration (AwsClientBuilder$EndpointConfiguration. endpoint-url region)))]
     (.build builder)))
 
 (defn transfer-manager ^TransferManager [^AmazonS3Client client]

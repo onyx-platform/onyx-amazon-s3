@@ -31,8 +31,8 @@
           (= (Transfer$TransferState/Completed) (.getState ^Upload upload))
           (swap! transfers dissoc k))))
 
-(defn serialize-per-element [serializer-fn separator elements]
-  (let [newline-bs (.getBytes separator)] 
+(defn serialize-per-element [serializer-fn ^String separator elements]
+  (let [newline-bs ^bytes (.getBytes separator)] 
     (with-open [baos (ByteArrayOutputStream.)] 
       (run! (fn [element]
               (let [bs ^bytes (serializer-fn element)]
