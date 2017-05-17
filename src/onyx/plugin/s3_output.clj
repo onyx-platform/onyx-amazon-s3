@@ -31,8 +31,8 @@
           (= (Transfer$TransferState/Completed) (.getState ^Upload upload))
           (swap! transfers dissoc k))))
 
-(defn serialize-per-element [serializer-fn separator elements]
-  (let [newline-bs (.getBytes separator)] 
+(defn serialize-per-element [serializer-fn ^String separator elements]
+  (let [newline-bs ^bytes (.getBytes separator)] 
     (with-open [baos (ByteArrayOutputStream.)] 
       (run! (fn [element]
               (let [bs ^bytes (serializer-fn element)]
@@ -98,12 +98,10 @@
 (defn output [{:keys [onyx.core/task-map] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
         {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/access-key s3/secret-key
-                s3/content-type s3/region s3/prefix s3/serialize-per-element?]} task-map
+                s3/content-type s3/region s3/endpoint-url s3/prefix s3/serialize-per-element?]} task-map
         encryption (or (:s3/encryption task-map) :none)
-        client (cond-> (if access-key 
-                         (s3/new-client access-key secret-key)
-                         (s3/new-client))
-                 region (s3/set-region region))
+        client (s3/new-client :access-key access-key :secret-key secret-key
+                              :region region :endpoint-url endpoint-url)
         transfer-manager (s3/transfer-manager client)
         transfers (atom {})
         serializer-fn (kw->fn serializer-fn)

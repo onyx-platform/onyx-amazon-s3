@@ -68,7 +68,7 @@
                      :onyx.messaging/impl :aeron
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
-        client (s/set-region (s/new-client) "us-east-1")
+        client (s/new-client :region "us-east-1")
         bucket (str "s3-plugin-test-" (java.util.UUID/randomUUID))
         _ (.createBucket client bucket)]
     (try

@@ -1,0 +1,60 @@
+buildscript {
+    repositories {
+        maven { url "https://plugins.gradle.org/m2" }
+    }
+
+    dependencies {
+        classpath "com.netflix.nebula:nebula-clojure-plugin:4.0.2"
+        classpath "com.github.jengelman.gradle.plugins:shadow:1.2.3"
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.1.0"
+        classpath "com.netflix.nebula:gradle-ospackage-plugin:4.1.0"
+    }
+}
+
+apply plugin: "nebula.clojure"
+
+dependencies {
+    repositories {
+        maven { url "http://clojars.org/repo" }
+        mavenCentral()
+        mavenLocal()
+    }
+    compile 'org.clojure:clojure:1.8.0',
+            'org.onyxplatform:onyx:0.10.0-beta14',
+            'com.amazonaws:aws-java-sdk-s3:1.11.125',
+            'com.amazonaws:aws-java-sdk-core:1.11.125'
+}
+
+sourceSets {
+    main {
+        clojure {
+            srcDirs = ['src']
+        }
+    }
+    test {
+        clojure {
+            srcDirs = ['test']
+        }
+    }
+}
+
+compileClojure {
+    classpath = project.files(classpath, project.processResources.outputs)
+}
+
+clojureTest {
+    classpath = project.files(classpath, project.processTestResources.outputs)
+    classpath = project.files(classpath, project.processResources.outputs)
+}
+
+clojureTest {
+    junit = true
+}
+
+test.reports.junitXml.destination = "$buildDir/test-results"
+
+jar {
+    from 'src'
+}
+
+tasks.uberjar.enabled = true
