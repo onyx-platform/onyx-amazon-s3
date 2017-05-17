@@ -9,10 +9,8 @@
             [onyx.plugin.s3-utils :as s3]
             [onyx.static.util :refer [kw->fn]]
             [onyx.plugin.protocols :as p]
-            [onyx.s3.information-model :as model]
             [schema.core :as s]
-            [onyx.s3.information-model :as model]
-            [taoensso.timbre :refer [debug info fatal] :as timbre]) 
+            [taoensso.timbre :refer [debug info fatal] :as timbre])
   (:import [java.io ByteArrayInputStream InputStreamReader BufferedReader]
            [java.util.concurrent.locks LockSupport]))
 
@@ -130,16 +128,12 @@
   (let [_ (s/validate (os/UniqueTaskMap S3InputTaskMap) task-map)
         batch-timeout (arg-or-default :onyx/batch-timeout task-map)
         batch-size (:onyx/batch-size task-map)
-        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region
+        {:keys [s3/bucket s3/prefix s3/deserializer-fn s3/region s3/endpoint-url
                 s3/buffer-size-bytes s3/content-encoding s3/access-key
                 s3/secret-key s3/file-key]} task-map
-        model (-> model/model :catalog-entry :onyx.plugin.s3-input/input :model)
-        buffer-size-bytes* (or buffer-size-bytes (:default (:s3/buffer-size-bytes model)))
-        client (cond-> (if access-key 
-                         (s3/new-client access-key secret-key)
-                         (s3/new-client))
-                 region (s3/set-region region))
+        client (s3/new-client :access-key access-key :secret-key secret-key
+                              :region region :endpoint-url endpoint-url)
         deserializer-fn (kw->fn deserializer-fn)
         extraction-fn (build-extraction-fn file-key)]
-    (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes* deserializer-fn
+    (->S3Input task-id batch-size batch-timeout content-encoding buffer-size-bytes deserializer-fn
                extraction-fn client bucket prefix (atom nil) (atom nil) nil nil nil nil nil)))

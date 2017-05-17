@@ -9,3 +9,6 @@ pom.xml.asc
 /.nrepl-port
 onyx.log
 scripts/release-scripts
+/build
+/.idea
+/.gradle
