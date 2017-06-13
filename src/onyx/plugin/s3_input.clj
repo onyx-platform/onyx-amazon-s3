@@ -112,7 +112,7 @@
     (empty? @files))
 
   p/Input
-  (poll! [this state]
+  (poll! [this state _]
     (if-let [line (and buffered-reader (.readLine ^BufferedReader buffered-reader))]
       (extraction-fn (deserializer-fn line) {:s3-key s3-key})
       (do
