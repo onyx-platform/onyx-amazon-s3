@@ -6,7 +6,7 @@
            [com.amazonaws.event ProgressListener$ExceptionReporter]
            [com.amazonaws.services.s3.transfer TransferManager Upload]
            [com.amazonaws.services.s3 AmazonS3Client AmazonS3ClientBuilder]
-           [com.amazonaws.services.s3.model S3Object S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
+           [com.amazonaws.services.s3.model ListObjectsRequest S3Object S3ObjectSummary S3ObjectInputStream PutObjectRequest GetObjectRequest ObjectMetadata]
            [com.amazonaws.services.s3.transfer.internal S3ProgressListener]
            [com.amazonaws.event ProgressEventType]
            [java.io ByteArrayInputStream InputStreamReader BufferedReader]
@@ -75,10 +75,14 @@
     (.getObject client object-request)))
 
 (defn list-keys [^AmazonS3Client client ^String bucket ^String prefix]
-  (loop [listing (.listObjects client bucket prefix) ks []]
-    (let [new-ks (into ks
-                       (map (fn [^S3ObjectSummary s] (.getKey s))
-                            (.getObjectSummaries listing)))]
-      (if (.isTruncated listing)
-        (recur (.listObjects client bucket prefix) new-ks)
-        new-ks))))
+  (let [req (doto (ListObjectsRequest.)
+              (.setBucketName bucket)
+              (.setPrefix prefix))]
+    (loop [listing (.listObjects client req) ks []]
+      (let [new-ks (into ks
+                         (map (fn [^S3ObjectSummary s] (.getKey s))
+                              (.getObjectSummaries listing)))]
+        (if (.isTruncated listing)
+          (do (.setMarker req (.getNextMarker listing))
+              (recur (.listObjects client req) new-ks))
+          new-ks)))))
