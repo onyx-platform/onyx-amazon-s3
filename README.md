@@ -7,7 +7,7 @@ Onyx plugin for Amazon S3.
 In your project file:
 
 ```clojure
-[org.onyxplatform/onyx-amazon-s3 "0.11.0.2-SNAPSHOT"]
+[org.onyxplatform/onyx-amazon-s3 "0.11.1.0-SNAPSHOT"]
 ```
 
 #### ABS TODO
