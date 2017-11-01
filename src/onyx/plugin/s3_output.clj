@@ -47,7 +47,7 @@
 
 (deftype S3Output [serializer-fn prefix key-naming-fn content-type 
                    encryption ^AmazonS3Client client ^TransferManager transfer-manager 
-                   transfers bucket]
+                   transfers bucket multi-upload prefix-key]
   p/Plugin
   (start [this event]
     this)
@@ -73,12 +73,22 @@
 
   (write-batch [this {:keys [onyx.core/results] :as event} replica _]
     (check-failures! transfers)
-    (let [segments (mapcat :leaves (:tree results))]
-      (when-not (empty? segments)
-        (let [serialized (serializer-fn segments)
-              file-name (str prefix (key-naming-fn event))
-              upload (s3/upload transfer-manager bucket file-name serialized content-type encryption)]
-          (swap! transfers assoc file-name upload)))
+    (let [write-to-prefix-fn (fn [prefix segments-prefix]
+                               (let [serialized (serializer-fn segments-prefix)
+                                     file-name (str prefix "/" (key-naming-fn event))
+                                     upload (s3/upload transfer-manager bucket file-name serialized content-type encryption)]
+                                 (swap! transfers assoc file-name upload)
+                                 upload))
+          segments (mapcat :leaves (:tree results))]
+      (when (seq segments)
+        (if multi-upload
+          (->> segments
+               (group-by prefix-key)
+               (map (fn [[prefix segments-prefix]]
+                      (assert prefix "prefix must be given")
+                      (write-to-prefix-fn prefix segments-prefix)))
+               (doall))
+          (write-to-prefix-fn prefix segments)))
       true)))
 
 (defn after-task-stop [event lifecycle]
@@ -98,7 +108,8 @@
 (defn output [{:keys [onyx.core/task-map] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
         {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/access-key s3/secret-key
-                s3/content-type s3/region s3/endpoint-url s3/prefix s3/serialize-per-element?]} task-map
+                s3/content-type s3/region s3/endpoint-url s3/prefix s3/serialize-per-element?
+                s3/multi-upload s3/prefix-key]} task-map
         encryption (or (:s3/encryption task-map) :none)
         client (s3/new-client :access-key access-key :secret-key secret-key
                               :region region :endpoint-url endpoint-url)
@@ -111,4 +122,5 @@
                         serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)]
     (->S3Output serializer-fn prefix key-naming-fn content-type 
-                encryption client transfer-manager transfers bucket)))
+                encryption client transfer-manager transfers bucket
+                multi-upload prefix-key)))
