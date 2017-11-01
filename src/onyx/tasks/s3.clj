@@ -21,6 +21,8 @@
    (s/optional-key :s3/endpoint-url) s/Str
    (s/optional-key :s3/content-type) s/Str
    (s/optional-key :s3/encryption) Encryption
+   (s/optional-key :s3/multi-upload) s/Bool
+   (s/optional-key :s3/prefix-key) s/Keyword
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-output
@@ -33,6 +35,7 @@
                              :s3/encryption :none
                              :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
                              :s3/serialize-per-element-separator "\n"
+                             :s3/multi-upload false
                              :onyx/doc "Writes segments to files in an S3 bucket."}
                             task-opts)
            :lifecycles [{:lifecycle/task task-name

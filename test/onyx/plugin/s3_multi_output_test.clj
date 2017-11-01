@@ -1,4 +1,4 @@
-(ns onyx.plugin.s3-output-test
+(ns onyx.plugin.s3-multi-output-test
   (:require [clojure.core.async
              :refer
              [<!! >!! alts!! chan close! sliding-buffer timeout]]
@@ -6,7 +6,7 @@
             [onyx api
              [job :refer [add-task]]
              [test-helper :refer [add-test-env-peers! feedback-exception! load-config with-test-env]]]
-            [onyx.plugin 
+            [onyx.plugin
              [s3-output]
              [core-async :refer [take-segments!]]
              [s3-utils :as s]]
@@ -27,13 +27,19 @@
 (def in-calls
   {:lifecycle/before-task-start inject-in-ch})
 
-(def serializer-fn (fn [vs] 
-                     (.getBytes (pr-str vs) "UTF-8")))
+(def serializer-fn (fn [vs]
+                     (.getBytes (pr-str (:message vs)) "UTF-8")))
 
 (def deserializer-fn (fn [s]
-                       (clojure.edn/read-string s)))
+                       (clojure.edn/read-string (str \( s \)))))
 
-(deftest s3-output-test
+(defn retrieve-s3-results-per-prefix [client bucket prefixes]
+  (reduce (fn [acc prefix]
+            (assoc acc prefix (s/retrieve-s3-results client bucket deserializer-fn prefix)))
+          {}
+          prefixes))
+; with multiple data groups, each destined for a different s3/prefix, test whether they indeed are sent to the right prefixes
+(deftest s3-multi-output-test
   (let [id (java.util.UUID/randomUUID)
         env-config {:onyx/tenancy-id id
                     :zookeeper/address "127.0.0.1:2188"
@@ -42,22 +48,20 @@
         peer-config {:onyx/tenancy-id id
                      :zookeeper/address "127.0.0.1:2188"
                      :onyx.peer/job-scheduler :onyx.job-scheduler/greedy
-                     ; :onyx.log/config {:appenders
-                     ;                   {:println
-                     ;                    {:min-level :info
-                     ;                     :enabled? true}}}
                      :onyx.messaging.aeron/embedded-driver? true
                      :onyx.messaging/allow-short-circuit? false
                      :onyx.messaging/impl :aeron
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
         client (s/new-client :region "us-east-1")
-        bucket (str "s3-plugin-test-" (java.util.UUID/randomUUID))
+        bucket (str "s3-plugin-test-" 3)
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
         (let [batch-size 50
-              n-messages 200
+              n-messages-per-key 10
+              prefixes ["2017/11/01/00" "2017/11/01/01" "2017/11/01/02" "2017/11/01/03" "2017/11/01/04" "2017/11/01/05" "2017/11/01/06" "2017/11/01/07" "2017/11/01/08" "2017/11/01/09" "2017/11/01/10" "2017/11/01/11"]
+              n-messages (* n-messages-per-key (count prefixes))
               job (-> {:workflow [[:in :identity] [:identity :out]]
                        :task-scheduler :onyx.task-scheduler/balanced
                        :catalog [{:onyx/name :in
@@ -81,20 +85,24 @@
                                                 ::serializer-fn
                                                 {:onyx/max-peers 1
                                                  :s3/encryption :aes256
+                                                 :s3/multi-upload true
+                                                 :s3/prefix-key :s3/prefix
+                                                 :s3/serialize-per-element? true
                                                  :onyx/batch-timeout 2000
                                                  :onyx/batch-size 2000})))
               _ (reset! in-chan (chan (inc n-messages)))
               _ (reset! in-buffer {})
-              input-messages (map (fn [v] {:n v
-                                           :some-string1 "This is a string that I will increase the length of to test throughput"
-                                           :some-string2 "This is a string that I will increase the length of to test throughput"}) 
-                                  (range n-messages))]
+              input-messages (flatten (map (fn [prefix] (map (fn [n] {:s3/prefix prefix
+                                                                    :message {:date-hour (str prefix "." n)}})
+                                                            (range 0 n-messages-per-key)))
+                                           prefixes))]
           (run! #(>!! @in-chan %) input-messages)
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
-                results (sort-by :n (s/retrieve-s3-results (s/new-client) bucket deserializer-fn))]
-            (is (= input-messages results)))))
+                results (retrieve-s3-results-per-prefix (s/new-client) bucket prefixes)]
+            (is (every? #(= n-messages-per-key (count %))  (vals results)))
+            (is (= (sort prefixes) (sort (keys results)))))))
       (finally
         (let [ks (s/get-bucket-keys client bucket)]
           (run! (fn [k]
