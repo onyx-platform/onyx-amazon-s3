@@ -33,23 +33,6 @@
 (def deserializer-fn (fn [s]
                        (clojure.edn/read-string s)))
 
-(defn read-object [^AmazonS3Client client ^String bucket ^String k]
-  (let [object (.getObject client bucket k)
-        metadata (.getObjectMetadata object)
-        length (.getContentLength metadata)
-        sse (.getSSEAlgorithm metadata)
-        bs (byte-array length)
-        content ^S3ObjectInputStream (.getObjectContent object)]
-    (deserializer-fn (slurp (clojure.java.io/reader content)))))
-
-(defn get-bucket-keys [^AmazonS3Client client ^String bucket]
-  (map #(.getKey ^S3ObjectSummary %) 
-       (.getObjectSummaries (.listObjects client bucket))))
-
-(defn retrieve-s3-results [client bucket]
-  (let [ks (get-bucket-keys client bucket)]
-    (mapcat (partial read-object client bucket) ks)))
-
 (deftest s3-output-test
   (let [id (java.util.UUID/randomUUID)
         env-config {:onyx/tenancy-id id
@@ -110,10 +93,10 @@
           (close! @in-chan)
           (let [job-id (:job-id (onyx.api/submit-job peer-config job))
                 _ (feedback-exception! peer-config job-id)
-                results (sort-by :n (retrieve-s3-results (s/new-client) bucket))]
+                results (sort-by :n (s/retrieve-s3-results (s/new-client) bucket deserializer-fn))]
             (is (= input-messages results)))))
       (finally
-        (let [ks (get-bucket-keys client bucket)]
+        (let [ks (s/get-bucket-keys client bucket)]
           (run! (fn [k]
                   (.deleteObject client bucket k))
                 ks)

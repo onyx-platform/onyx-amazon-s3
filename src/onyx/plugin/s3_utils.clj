@@ -86,3 +86,28 @@
           (do (.setMarker req (.getNextMarker listing))
               (recur (.listObjects client req) new-ks))
           new-ks)))))
+
+(defn read-object [deserializer-fn ^AmazonS3Client client ^String bucket ^String k]
+  (let [object (.getObject client bucket k)
+        metadata (.getObjectMetadata object)
+        length (.getContentLength metadata)
+        sse (.getSSEAlgorithm metadata)
+        bs (byte-array length)
+        content ^S3ObjectInputStream (.getObjectContent object)]
+    (deserializer-fn (slurp (clojure.java.io/reader content)))))
+
+(defn get-bucket-keys
+  ([^AmazonS3Client client ^String bucket]
+   (map #(.getKey ^S3ObjectSummary %)
+        (.getObjectSummaries (.listObjects client bucket))))
+  ([^AmazonS3Client client ^String bucket ^String prefix]
+   (map #(.getKey ^S3ObjectSummary %)
+        (.getObjectSummaries (.listObjects client bucket prefix)))))
+
+(defn retrieve-s3-results 
+  ([client bucket deserializer-fn]
+   (let [ks (get-bucket-keys client bucket)]
+    (mapcat (partial read-object deserializer-fn client bucket) ks)))
+  ([client bucket deserializer-fn prefix]
+   (let [ks (get-bucket-keys client bucket prefix)]
+     (mapcat (partial read-object deserializer-fn client bucket) ks))))
