@@ -1,4 +1,4 @@
-(defproject org.onyxplatform/onyx-amazon-s3 "0.11.1.1-SNAPSHOT"
+(defproject org.onyxplatform/onyx-amazon-s3 "0.12.0.0-alpha1"
   :description "Onyx plugin for Amazon S3"
   :url "https://github.com/onyx-platform/onyx-amazon-s3"
   :license {:name "Eclipse Public License"
@@ -13,7 +13,7 @@
                              :sign-releases false}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  ^{:voom {:repo "git@github.com:onyx-platform/onyx.git" :branch "master"}}
-                 [org.onyxplatform/onyx "0.11.2-20171103.054521-9"]
+                 [org.onyxplatform/onyx "0.12.0-alpha1"]
                  [com.amazonaws/aws-java-sdk-core "1.11.125"]
                  [com.amazonaws/aws-java-sdk-s3 "1.11.125"]]
   :global-vars  {*warn-on-reflection* true}
