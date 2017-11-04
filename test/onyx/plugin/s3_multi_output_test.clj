@@ -54,7 +54,7 @@
                      :onyx.messaging/peer-port 40200
                      :onyx.messaging/bind-addr "localhost"}
         client (s/new-client :region "us-east-1")
-        bucket (str "s3-plugin-test-" 3)
+        bucket (str "s3-plugin-test-" (java.util.UUID/randomUUID))
         _ (.createBucket client bucket)]
     (try
       (with-test-env [test-env [3 env-config peer-config]]
