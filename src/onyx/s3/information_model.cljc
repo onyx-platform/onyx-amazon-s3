@@ -81,6 +81,16 @@
               :optional? true
               :type :string}
 
+              :s3/multi-upload
+              {:doc "Flag that causes the plugin to group the batch of segments by `:s3/prefix-key`, and upload an object per group."
+               :optional? true
+               :type :boolean}
+
+              :s3/prefix-key
+              {:doc "Used with `s3/multi-upload`. Key to batch segments into prefixed objects via e.g. `[{:a 3 :k "batch1"}{:a 2 :k "batch2"}]` will cause two objects to be uploaded under prefix \"batch1\" and \"batch2\"."
+               :optional? true
+               :type :any}
+
              :s3/endpoint-url
              {:doc "The S3 endpoint URL to use."
               :optional? true
