@@ -73,13 +73,13 @@
 
   (write-batch [this {:keys [onyx.core/write-batch] :as event} replica _]
     (check-failures! transfers)
-    (let [write-to-prefix-fn (fn [prefix segments]
-                               (let [serialized (serializer-fn segments)
-                                     file-name (str prefix "/" (key-naming-fn event))
-                                     upload (s3/upload transfer-manager bucket file-name serialized content-type encryption)]
-                                 (swap! transfers assoc file-name upload)
-                                 upload))]
-      (when (seq write-batch)
+    (when (seq write-batch)
+      (let [write-to-prefix-fn (fn [prefix segments]
+                                 (let [serialized (serializer-fn segments)
+                                       file-name (str prefix "/" (key-naming-fn event))
+                                       upload (s3/upload transfer-manager bucket file-name serialized content-type encryption)]
+                                   (swap! transfers assoc file-name upload)
+                                   upload))]
         (if multi-upload
           (->> write-batch
                (group-by #(get % prefix-key))
@@ -87,8 +87,8 @@
                       (assert prefix "prefix must be given")
                       (write-to-prefix-fn prefix segments)))
                (doall))
-          (write-to-prefix-fn prefix write-batch)))
-      true)))
+          (write-to-prefix-fn prefix write-batch))))
+      true))
 
 (defn after-task-stop [event lifecycle]
   {})
