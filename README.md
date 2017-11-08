@@ -91,6 +91,9 @@ When `:s3/serialize-per-element?` is set to true, the serializer will be called
 on each individual segmnt, rather than the whole batch, and will be separated
 by the string value set in `:s3/serialize-per-element-separator`.
 
+An alternative upload mode can be selected via `:s3/multi-upload` documented below. 
+When this option is used segments will be partitioned into different objects via a grouping key.
+
 Lifecycle entry:
 
 ```clojure
