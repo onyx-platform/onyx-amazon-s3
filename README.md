@@ -71,6 +71,7 @@ Catalog entry:
  :s3/key-naming-fn :onyx.plugin.s3-output/default-naming-fn
  :s3/prefix "filter-prefix/example/"
  :s3/serialize-per-element? false
+ :s3/max-concurrent-uploads 20
  :onyx/type :output
  :onyx/medium :s3
  :onyx/batch-size 20
@@ -115,6 +116,7 @@ Lifecycle entry:
 |`:s3/encryption`                       | `keyword` | Optional server side encryption setting. One of `:sse256` or `:none`.
 |`:s3/region`                           | `string`  | The S3 region to write objects to.
 |`:s3/endpoint-url`                     | `string`  | The S3 endpoint-url to connect to (for S3-compatible storage solutions).
+|`:s3/max-concurrent-uploads`           | `integer` | Maximum number of simultaneous uploads.
 |`:s3/serialize-per-element?`           | `boolean` | Flag for whether to serialize as an entire batch, or serialize per element and separate by newline characters.
 |`:s3/serialize-per-element-separator`  | `string` | String to separate per element strings with. Defaults to newline charactor.
 

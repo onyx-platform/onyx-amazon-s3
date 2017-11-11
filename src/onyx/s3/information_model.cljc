@@ -86,8 +86,13 @@
                :optional? true
                :type :boolean}
 
+              :s3/max-concurrent-uploads
+              {:doc "Maximum number of simultaneous uploads."
+               :optional? true
+               :type :integer}
+
               :s3/prefix-key
-              {:doc "Used with `s3/multi-upload`. Key to batch segments into prefixed objects via e.g. `[{:a 3 :k "batch1"}{:a 2 :k "batch2"}]` will cause two objects to be uploaded under prefix \"batch1\" and \"batch2\"."
+              {:doc "Used with `s3/multi-upload`. Key to batch segments into prefixed objects via e.g. `[{:a 3 :k \"batch1\"}{:a 2 :k \"batch2\"}]` will cause two objects to be uploaded under prefix \"batch1\" and \"batch2\"."
                :optional? true
                :type :any}
 
