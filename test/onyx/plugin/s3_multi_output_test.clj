@@ -84,6 +84,7 @@
                                                 bucket
                                                 ::serializer-fn
                                                 {:onyx/max-peers 1
+                                                 :s3/max-concurrent-uploads 1
                                                  :s3/encryption :aes256
                                                  :s3/multi-upload true
                                                  :s3/prefix-key :s3/prefix

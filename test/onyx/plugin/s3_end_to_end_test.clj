@@ -111,7 +111,7 @@
                      :onyx.messaging/bind-addr "localhost"}
         encryption :aes256
         client (s/new-client :region "us-east-1")
-        bucket (str "s3-plugin-test-onyx")
+        bucket (str "onyx-s3-test-" (java.util.UUID/randomUUID))
         prefix (str (java.util.UUID/randomUUID) "/")
         _ (.createBucket ^AmazonS3Client client ^String bucket)]
     (try
@@ -137,7 +137,8 @@
             (is (= (set (take-segments! out 5000))
                    (set input-messages))))))
       (finally
-       #_(let [ks (s/list-keys client bucket prefix)]
+       (let [ks (s/get-bucket-keys client bucket)]
          (run! (fn [k]
-                 (.deleteObject ^AmazonS3Client client ^String bucket ^String k))
-               ks))))))
+                 (.deleteObject client bucket k))
+               ks)
+         (.deleteBucket client bucket))))))

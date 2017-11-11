@@ -45,9 +45,9 @@
   (check-failures! transfers)
   (empty? @transfers))
 
-(deftype S3Output [serializer-fn prefix key-naming-fn content-type 
+(deftype S3Output [serializer-fn prefix key-naming-fn content-type max-concurrent-uploads
                    encryption ^AmazonS3Client client ^TransferManager transfer-manager 
-                   transfers bucket multi-upload prefix-key]
+                   transfers bucket multi-upload prefix-key prepared-batch]
   p/Plugin
   (start [this event]
     this)
@@ -68,27 +68,36 @@
   (checkpoint [this])
 
   p/Output
-  (prepare-batch [this _ _ _]
+  (prepare-batch [this {:keys [onyx.core/write-batch] :as event} _ _]
+    (reset! prepared-batch write-batch)
     true)
 
   (write-batch [this {:keys [onyx.core/write-batch] :as event} replica _]
     (check-failures! transfers)
-    (when (seq write-batch)
+    (when-not (empty? @prepared-batch) 
       (let [write-to-prefix-fn (fn [prefix segments]
                                  (let [serialized (serializer-fn segments)
                                        file-name (str prefix "/" (key-naming-fn event))
                                        upload (s3/upload transfer-manager bucket file-name serialized content-type encryption)]
                                    (swap! transfers assoc file-name upload)
-                                   upload))]
-        (if multi-upload
-          (->> write-batch
-               (group-by #(get % prefix-key))
-               (map (fn [[prefix segments]]
-                      (assert prefix "prefix must be given")
-                      (write-to-prefix-fn prefix segments)))
-               (doall))
-          (write-to-prefix-fn prefix write-batch))))
-      true))
+                                   upload))] 
+        (if multi-upload 
+          (let [n-upload-this-batch (min (- max-concurrent-uploads (count @transfers))
+                                         (count @prepared-batch))
+                to-upload (take n-upload-this-batch @prepared-batch)
+                _ (swap! prepared-batch (fn [bt] (drop n-upload-this-batch bt)))]
+            (->> to-upload
+                 (group-by #(get % prefix-key))
+                 (map (fn [[prefix segments]]
+                        (assert prefix "prefix must be given")
+                        (write-to-prefix-fn prefix segments)))
+                 (doall)))
+          (when (< (count @transfers) max-concurrent-uploads)
+            (write-to-prefix-fn prefix @prepared-batch)
+            (reset! prepared-batch [])))))
+
+    ;; if we've flushed the batch, we can proceed
+    (empty? @prepared-batch)))
 
 (defn after-task-stop [event lifecycle]
   {})
@@ -110,6 +119,7 @@
                 s3/content-type s3/region s3/endpoint-url s3/prefix s3/serialize-per-element?
                 s3/multi-upload s3/prefix-key]} task-map
         encryption (or (:s3/encryption task-map) :none)
+        max-concurrent-uploads (or (:s3/max-concurrent-uploads task-map) Long/MAX_VALUE)
         client (s3/new-client :access-key access-key :secret-key secret-key
                               :region region :endpoint-url endpoint-url)
         transfer-manager (s3/transfer-manager client)
@@ -119,7 +129,8 @@
         serializer-fn (if serialize-per-element? 
                         (fn [segments] (serialize-per-element serializer-fn separator segments))
                         serializer-fn)
-        key-naming-fn (kw->fn key-naming-fn)]
-    (->S3Output serializer-fn prefix key-naming-fn content-type 
+        key-naming-fn (kw->fn key-naming-fn)
+        prepared-batch (atom [])]
+    (->S3Output serializer-fn prefix key-naming-fn content-type max-concurrent-uploads
                 encryption client transfer-manager transfers bucket
-                multi-upload prefix-key)))
+                multi-upload prefix-key prepared-batch)))
