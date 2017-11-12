@@ -14,13 +14,6 @@
   (:import [java.io ByteArrayInputStream InputStreamReader BufferedReader]
            [java.util.concurrent.locks LockSupport]))
 
-(defn close-readers! [readers]
-  (when-let [{:keys [input-stream input-stream-reader buffered-reader]} @readers]
-    (.close ^BufferedReader buffered-reader)
-    (.close ^InputStreamReader input-stream-reader)
-    (.close ^com.amazonaws.services.s3.model.S3ObjectInputStream input-stream))
-  (reset! readers nil))
-
 (defn close-read-s3-resources 
   [event lifecycle]
   {})
@@ -94,6 +87,7 @@
   p/Checkpointed
   (checkpoint [this]
     @files)
+
   (recover! [this replica-version checkpoint]
     (reset! files 
             (if (or (nil? checkpoint) (= checkpoint :beginning)) 
