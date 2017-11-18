@@ -23,7 +23,7 @@
    (s/optional-key :s3/encryption) Encryption
    (s/optional-key :s3/multi-upload) s/Bool
    (s/optional-key :s3/prefix-key) s/Keyword
-   (s/optional-key :s3/prefix-key-separator) s/Str
+   (s/optional-key :s3/prefix-separator) s/Str
    (s/optional-key :s3/max-concurrent-uploads) s/Int
    (os/restricted-ns :s3) s/Any})
 
