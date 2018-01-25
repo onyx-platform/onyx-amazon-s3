@@ -63,6 +63,9 @@
     (completed? transfers))
   p/Checkpointed
   (recover! [this replica-version checkpoint]
+    (run! #(.abort ^Upload %) (vals @transfers))
+    (reset! prepared-batch [])
+    (reset! transfers {})
     this)
   (checkpointed! [this epoch])
   (checkpoint [this])
@@ -124,13 +127,13 @@
         client (s3/new-client :access-key access-key :secret-key secret-key
                               :region region :endpoint-url endpoint-url)
         transfer-manager (s3/transfer-manager client)
-        transfers (atom {})
         serializer-fn (kw->fn serializer-fn)
         separator (or (:s3/serialize-per-element-separator task-map) "\n")
         serializer-fn (if serialize-per-element? 
                         (fn [segments] (serialize-per-element serializer-fn separator segments))
                         serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)
+        transfers (atom {})
         prepared-batch (atom [])]
     (->S3Output serializer-fn prefix key-naming-fn content-type max-concurrent-uploads
                 encryption client transfer-manager transfers bucket
