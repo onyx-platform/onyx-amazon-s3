@@ -101,16 +101,21 @@
               :optional? true
               :type :string}
 
-             :s3/content-type 
+             :s3/content-type
              {:doc "Optional content type for S3 object."
               :optional? true
               :type :string}
 
-             :s3/encryption 
+             :s3/encryption
              {:doc "Optional server side encryption setting."
               :choices [:none :aes256]
               :optional? true
-              :type :keyword}}}}
+              :type :keyword}
+             :s3/transfer-manager-threadpool-size
+             {:doc "Optional transfer manager thread pool size."
+              :optional? true
+              :type :int}
+             }}}
 
    :lifecycle-entry
    {:onyx.plugin.s3-input/input
