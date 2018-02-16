@@ -81,13 +81,14 @@
                                                 ::serializer-fn
                                                 {:onyx/max-peers 1
                                                  :s3/encryption :aes256
+                                                 :s3/transfer-manager-threadpool-size 4
                                                  :onyx/batch-timeout 2000
                                                  :onyx/batch-size 2000})))
               _ (reset! in-chan (chan (inc n-messages)))
               _ (reset! in-buffer {})
               input-messages (map (fn [v] {:n v
                                            :some-string1 "This is a string that I will increase the length of to test throughput"
-                                           :some-string2 "This is a string that I will increase the length of to test throughput"}) 
+                                           :some-string2 "This is a string that I will increase the length of to test throughput"})
                                   (range n-messages))]
           (run! #(>!! @in-chan %) input-messages)
           (close! @in-chan)

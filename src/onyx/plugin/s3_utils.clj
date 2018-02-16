@@ -11,6 +11,7 @@
            [com.amazonaws.event ProgressEventType]
            [java.io ByteArrayInputStream InputStreamReader BufferedReader]
            [org.apache.commons.codec.digest DigestUtils]
+           [java.util.concurrent ExecutorService Executors]
            [org.apache.commons.codec.binary Base64]))
 
 (defn new-client ^AmazonS3Client
@@ -21,8 +22,14 @@
                            endpoint-url ^AmazonS3ClientBuilder (.withEndpointConfiguration (AwsClientBuilder$EndpointConfiguration. endpoint-url region)))]
     (.build builder)))
 
-(defn transfer-manager ^TransferManager [^AmazonS3Client client]
-  (TransferManager. client))
+(defn transfer-manager ^TransferManager
+  ([^AmazonS3Client client]
+   (TransferManager. client))
+  ([^AmazonS3Client client n-threads]
+   (if n-threads
+     (let [executor-service ^ExecutorService (Executors/newFixedThreadPool n-threads)]
+       (TransferManager. client executor-service))
+     (transfer-manager client))))
 
 (defn upload [^TransferManager transfer-manager ^String bucket ^String key
               ^bytes serialized ^String content-type encryption]
