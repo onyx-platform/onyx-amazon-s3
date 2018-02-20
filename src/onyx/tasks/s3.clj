@@ -25,6 +25,7 @@
    (s/optional-key :s3/prefix-key) s/Keyword
    (s/optional-key :s3/prefix-separator) s/Str
    (s/optional-key :s3/max-concurrent-uploads) s/Int
+   (s/optional-key :s3/transfer-manager-threadpool-size) s/Int
    (os/restricted-ns :s3) s/Any})
 
 (s/defn ^:always-validate s3-output
@@ -51,7 +52,7 @@
                                 :s3/serializer-fn serializer-fn}
                                task-opts))))
 
-(def S3InputTaskMap 
+(def S3InputTaskMap
   {:s3/deserializer-fn os/NamespacedKeyword
    :s3/bucket s/Str
    :s3/prefix s/Str

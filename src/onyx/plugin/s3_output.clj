@@ -120,16 +120,17 @@
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
         {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/access-key s3/secret-key
                 s3/content-type s3/region s3/endpoint-url s3/prefix s3/serialize-per-element? s3/prefix-separator
+                s3/transfer-manager-threadpool-size
                 s3/multi-upload s3/prefix-key]} task-map
         encryption (or (:s3/encryption task-map) :none)
         max-concurrent-uploads (or (:s3/max-concurrent-uploads task-map) Long/MAX_VALUE)
         prefix-separator (or prefix-separator "/")
         client (s3/new-client :access-key access-key :secret-key secret-key
                               :region region :endpoint-url endpoint-url)
-        transfer-manager (s3/transfer-manager client)
+        transfer-manager (s3/transfer-manager client transfer-manager-threadpool-size)
         serializer-fn (kw->fn serializer-fn)
         separator (or (:s3/serialize-per-element-separator task-map) "\n")
-        serializer-fn (if serialize-per-element? 
+        serializer-fn (if serialize-per-element?
                         (fn [segments] (serialize-per-element serializer-fn separator segments))
                         serializer-fn)
         key-naming-fn (kw->fn key-naming-fn)
