@@ -85,16 +85,17 @@
                                    (swap! transfers assoc file-name upload)
                                    upload))] 
         (if multi-upload 
+          ;; batch upload
           (let [n-upload-this-batch (min (- max-concurrent-uploads (count @transfers))
                                          (count @prepared-batch))
                 to-upload (take n-upload-this-batch @prepared-batch)
                 _ (swap! prepared-batch (fn [bt] (drop n-upload-this-batch bt)))]
             (->> to-upload
                  (group-by #(get % prefix-key))
-                 (map (fn [[prefix segments]]
-                        (assert prefix "prefix must be given")
-                        (write-to-prefix-fn prefix segments)))
-                 (doall)))
+                 (run! (fn [[prefix segments]]
+                         (assert prefix "prefix must be given")
+                         (write-to-prefix-fn prefix segments)))))
+          ;; single upload
           (when (< (count @transfers) max-concurrent-uploads)
             (write-to-prefix-fn prefix @prepared-batch)
             (reset! prepared-batch [])))))
