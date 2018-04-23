@@ -103,21 +103,13 @@
     ;; if we've flushed the batch, we can proceed
     (empty? @prepared-batch)))
 
-(defn after-task-stop [event lifecycle]
-  {})
-
 (defn before-task-start [event lifecycle]
-  {})
-
-(defn write-handle-exception [event lifecycle lf-kw exception]
-  :defer)
+  {:s3.output/transfers (atom {})})
 
 (def s3-output-calls
-  {:lifecycle/before-task-start before-task-start
-   :lifecycle/handle-exception write-handle-exception
-   :lifecycle/after-task-stop after-task-stop})
+  {:lifecycle/before-task-start before-task-start})
 
-(defn output [{:keys [onyx.core/task-map] :as event}]
+(defn output [{:keys [onyx.core/task-map s3.output/transfers] :as event}]
   (let [_ (s/validate (os/UniqueTaskMap S3OutputTaskMap) task-map)
         {:keys [s3/bucket s3/serializer-fn s3/key-naming-fn s3/access-key s3/secret-key
                 s3/content-type s3/region s3/endpoint-url s3/prefix s3/serialize-per-element? s3/prefix-separator
@@ -134,9 +126,9 @@
         serializer-fn (if serialize-per-element?
                         (fn [segments] (serialize-per-element serializer-fn separator segments))
                         serializer-fn)
-        key-naming-fn (kw->fn key-naming-fn)
-        transfers (atom {})
-        prepared-batch (atom [])]
+        transfers (or transfers (atom {}))
+        prepared-batch (atom [])
+        key-naming-fn (kw->fn key-naming-fn)]
     (->S3Output serializer-fn prefix key-naming-fn content-type max-concurrent-uploads
                 encryption client transfer-manager transfers bucket
                 multi-upload prefix-key prefix-separator prepared-batch)))
