@@ -45,9 +45,9 @@
   (check-failures! transfers)
   (empty? @transfers))
 
-(deftype S3Output [serializer-fn prefix key-naming-fn content-type max-concurrent-uploads
-                   encryption ^AmazonS3Client client ^TransferManager transfer-manager 
-                   transfers bucket multi-upload prefix-key prefix-separator prepared-batch]
+(defrecord S3Output [serializer-fn prefix key-naming-fn content-type max-concurrent-uploads
+                     encryption ^AmazonS3Client client ^TransferManager transfer-manager 
+                     transfers bucket multi-upload prefix-key prefix-separator prepared-batch]
   p/Plugin
   (start [this event]
     this)
