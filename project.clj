@@ -13,7 +13,7 @@
                              :sign-releases false}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  ^{:voom {:repo "git@github.com:onyx-platform/onyx.git" :branch "master"}}
-                 [org.onyxplatform/onyx "0.14.6-20190705_063923-g8ee8fd1"]
+                 [org.onyxplatform/onyx "0.14.6-20190728_135858-g298dc3e"]
                  [com.amazonaws/aws-java-sdk-s3 "1.11.267"]]
   :global-vars  {*warn-on-reflection* true}
   :jvm-opts ["-Xmx2500M"]
